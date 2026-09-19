@@ -3,613 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Para Mi Persona Favorita ❤️</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Poppins:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    <!-- Font Awesome icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Canvas Confetti Library -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        romantic: {
-                            50: '#fff0f3',
-                            100: '#ffccd5',
-                            200: '#ffb3c1',
-                            300: '#ff8fa3',
-                            400: '#ff758f',
-                            500: '#ff4d6d',
-                            600: '#c9184a',
-                            700: '#a4133c',
-                            800: '#800f2f',
-                            900: '#590d22',
-                        }
-                    },
-                    fontFamily: {
-                        cursive: ['"Great Vibes"', 'cursive'],
-                        sans: ['"Poppins"', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-
+    <title>Mariposa Animada</title>
     <style>
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #fff0f3;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #ff758f;
-            border-radius: 4px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        /* Heart Floating Animation Background */
-        #hearts-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
+        body {
+            background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow: hidden;
-        }
-
-        .floating-heart {
-            position: absolute;
-            bottom: -20px;
-            color: rgba(255, 77, 109, 0.6);
-            animation: floatUp 8s linear infinite;
-            user-select: none;
-        }
-
-        @keyframes floatUp {
-            0% {
-                transform: translateY(0) rotate(0deg) scale(0.8);
-                opacity: 1;
-            }
-            50% {
-                transform: translateY(-50vh) rotate(180deg) scale(1.2);
-                opacity: 0.8;
-            }
-            100% {
-                transform: translateY(-105vh) rotate(360deg) scale(0.8);
-                opacity: 0;
-            }
-        }
-
-        /* Envelope CSS Animation */
-        .envelope-wrapper {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             perspective: 1000px;
         }
 
-        .envelope {
-            position: relative;
-            width: 300px;
-            height: 200px;
-            background-color: #ff758f;
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
-            box-shadow: 0 15px 35px rgba(164, 19, 60, 0.25);
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-
-        .envelope:hover {
-            transform: scale(1.03);
-        }
-
-        .envelope::before {
-            /* Front pocket left flap */
-            content: '';
+        /* Mensaje flotante */
+        .message {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 0;
-            border-top: 100px solid transparent;
-            border-bottom: 100px solid #ff4d6d;
-            border-right: 150px solid transparent;
-            border-left: 150px solid #ff4d6d;
-            border-bottom-left-radius: 12px;
-            z-index: 3;
-        }
-
-        .envelope::after {
-            /* Front pocket right flap */
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 0;
-            height: 0;
-            border-top: 100px solid transparent;
-            border-bottom: 100px solid #c9184a;
-            border-right: 150px solid #c9184a;
-            border-left: 150px solid transparent;
-            border-bottom-right-radius: 12px;
-            z-index: 3;
-        }
-
-        .envelope-top {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 0;
-            border-top: 110px solid #ff8fa3;
-            border-left: 150px solid transparent;
-            border-right: 150px solid transparent;
-            transform-origin: top;
-            transition: transform 0.6s ease-in-out 0.2s, z-index 0.2s;
-            z-index: 4;
-        }
-
-        .envelope.open .envelope-top {
-            transform: rotateX(180deg);
-            z-index: 1;
-        }
-
-        .letter {
-            position: absolute;
-            bottom: 10px;
-            left: 15px;
-            width: 270px;
-            height: 180px;
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            transition: transform 0.6s ease-in-out;
-            z-index: 2;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            bottom: 10%;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.5rem;
+            text-shadow: 0 0 10px rgba(0, 198, 255, 0.8);
+            letter-spacing: 2px;
+            animation: pulseText 3s infinite ease-in-out;
             text-align: center;
+            padding: 0 20px;
         }
 
-        .envelope.open .letter {
-            transform: translateY(-110px);
-            z-index: 5;
-            height: auto;
-            min-height: 220px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        @keyframes pulseText {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
         }
 
-        .heart-seal {
+        /* Contenedor principal de la mariposa */
+        .butterfly-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            transform-style: preserve-3d;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Vuelo flotante suave */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(-5deg); }
+            50% { transform: translateY(-30px) rotate(5deg); }
+        }
+
+        /* Estructura central */
+        .butterfly {
             position: absolute;
-            top: 80px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            width: 45px;
-            height: 45px;
-            background-color: #a4133c;
+            width: 0;
+            height: 0;
+            transform-style: preserve-3d;
+            transform: rotateX(50deg) rotateY(0deg) rotateZ(-30deg);
+        }
+
+        /* Cuerpo de la mariposa */
+        .body {
+            position: absolute;
+            top: -25px;
+            left: -4px;
+            width: 8px;
+            height: 50px;
+            background: linear-gradient(to bottom, #111, #333, #111);
+            border-radius: 10px;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0, 198, 255, 0.5);
+        }
+
+        /* Antenas */
+        .body::before, .body::after {
+            content: '';
+            position: absolute;
+            top: -12px;
+            width: 2px;
+            height: 16px;
+            background: #aaa;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-            z-index: 5;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            transition: opacity 0.3s ease;
+        }
+        .body::before { left: 1px; transform: rotate(-25deg); }
+        .body::after { right: 1px; transform: rotate(25deg); }
+
+        /* Alas */
+        .wing {
+            position: absolute;
+            top: -35px;
+            width: 80px;
+            height: 90px;
+            background: linear-gradient(135deg, #00c6ff, #0072ff, #7f00ff);
+            border-radius: 50% 50% 10% 40%;
+            box-shadow: 0 0 20px rgba(0, 198, 255, 0.8), inset 0 0 15px rgba(255, 255, 255, 0.5);
+            opacity: 0.9;
         }
 
-        .envelope.open .heart-seal {
-            opacity: 0;
+        /* Ala Izquierda y animación de aleteo */
+        .wing-left {
+            right: 0;
+            transform-origin: right center;
+            animation: flapLeft 0.5s infinite ease-in-out alternate;
+        }
+
+        /* Ala Derecha y animación de aleteo */
+        .wing-right {
+            left: 0;
+            transform-origin: left center;
+            border-radius: 50% 50% 40% 10%;
+            animation: flapRight 0.5s infinite ease-in-out alternate;
+        }
+
+        @keyframes flapLeft {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(70deg); }
+        }
+
+        @keyframes flapRight {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(-70deg); }
+        }
+
+        /* Partículas / Polvo de Hadas de fondo */
+        .particle {
+            position: absolute;
+            background: rgba(0, 198, 255, 0.8);
+            border-radius: 50%;
             pointer-events: none;
+            box-shadow: 0 0 8px #00c6ff;
+            animation: rise 5s linear infinite;
         }
 
-        /* Pulse Animation */
-        @keyframes customPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); }
-        }
-        .pulse-heart {
-            animation: customPulse 1.8s infinite ease-in-out;
+        @keyframes rise {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-10vh) scale(1.5);
+                opacity: 0;
+            }
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-romantic-50 via-romantic-100 to-romantic-200 min-h-screen font-sans text-gray-800 relative pb-16 overflow-x-hidden">
+<body>
 
-    <!-- Floating Background Hearts Container -->
-    <div id="hearts-container"></div>
-
-    <!-- Header Banner -->
-    <header class="py-8 text-center relative z-10 px-4">
-        <h1 class="font-cursive text-5xl md:text-7xl text-romantic-700 drop-shadow-md mb-2">
-            Un Mensaje Especial
-        </h1>
-        <p class="text-romantic-800 text-sm md:text-base font-medium max-w-md mx-auto">
-            Diseñado con todo el amor del mundo solo para ti 💕
-        </p>
-    </header>
-
-    <!-- Main Container -->
-    <main class="max-w-4xl mx-auto px-4 space-y-12 relative z-10">
-
-        <!-- SECTION 1: Interactive Envelope & Letter -->
-        <section class="flex flex-col items-center justify-center my-8">
-            <p class="text-romantic-600 font-semibold mb-6 animate-bounce text-sm md:text-base">
-                👇 Presiona el sobre para abrir tu carta 👇
-            </p>
-
-            <div class="envelope-wrapper mb-24">
-                <div class="envelope" id="envelope" onclick="toggleEnvelope()">
-                    <div class="envelope-top"></div>
-                    <div class="heart-seal">
-                        <i class="fa-solid fa-heart"></i>
-                    </div>
-                    <div class="letter text-romantic-900" id="letterContent">
-                        <i class="fa-solid fa-quote-left text-romantic-300 text-xl mb-1"></i>
-                        <p class="font-cursive text-2xl md:text-3xl text-romantic-600 mb-2">
-                            Mi amor hermoso,
-                        </p>
-                        <p class="text-xs md:text-sm leading-relaxed text-gray-700 italic">
-                            Desde que llegaste a mi vida, cada día se siente más bonito y especial. Gracias por cada sonrisa, por tus abrazos y por hacer mi mundo un lugar mejor. ¡Eres mi persona favorita!
-                        </p>
-                        <div class="mt-3 text-romantic-500 font-bold text-xs flex items-center justify-center gap-1">
-                            <span>Siempre tuyo</span>
-                            <i class="fa-solid fa-heart text-romantic-500"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 2: Love Counter & Music Player Simulation -->
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <!-- Time Counter Card -->
-            <div class="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-romantic-200 flex flex-col justify-between">
-                <div>
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-full bg-romantic-100 flex items-center justify-center text-romantic-600">
-                            <i class="fa-solid fa-clock-rotate-left text-xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="font-bold text-lg text-romantic-800">Tiempo Juntos</h2>
-                            <p class="text-xs text-gray-500">Sumando momentos inolvidables</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-4 gap-2 text-center my-6">
-                        <div class="bg-romantic-50 p-3 rounded-2xl border border-romantic-100">
-                            <span id="days" class="block font-bold text-xl md:text-2xl text-romantic-600">00</span>
-                            <span class="text-[10px] uppercase font-semibold text-gray-500">Días</span>
-                        </div>
-                        <div class="bg-romantic-50 p-3 rounded-2xl border border-romantic-100">
-                            <span id="hours" class="block font-bold text-xl md:text-2xl text-romantic-600">00</span>
-                            <span class="text-[10px] uppercase font-semibold text-gray-500">Horas</span>
-                        </div>
-                        <div class="bg-romantic-50 p-3 rounded-2xl border border-romantic-100">
-                            <span id="minutes" class="block font-bold text-xl md:text-2xl text-romantic-600">00</span>
-                            <span class="text-[10px] uppercase font-semibold text-gray-500">Min</span>
-                        </div>
-                        <div class="bg-romantic-50 p-3 rounded-2xl border border-romantic-100">
-                            <span id="seconds" class="block font-bold text-xl md:text-2xl text-romantic-600">00</span>
-                            <span class="text-[10px] uppercase font-semibold text-gray-500">Seg</span>
-                        </div>
-                    </div>
-                </div>
-
-                <p class="text-xs text-center text-romantic-600 italic">
-                    "Contando cada segundo a tu lado" ❤️
-                </p>
-            </div>
-
-            <!-- Simulated Music Player Card -->
-            <div class="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-romantic-200 flex flex-col justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="relative w-16 h-16 rounded-2xl bg-gradient-to-tr from-romantic-400 to-romantic-600 flex items-center justify-center text-white text-2xl shadow-md overflow-hidden group">
-                        <i id="musicIcon" class="fa-solid fa-music animate-spin" style="animation-duration: 4s;"></i>
-                    </div>
-                    <div class="flex-1 overflow-hidden">
-                        <span class="text-[10px] uppercase tracking-wider font-bold text-romantic-500 bg-romantic-100 px-2 py-0.5 rounded-full">Nuestra Canción</span>
-                        <h3 class="font-bold text-gray-800 text-base truncate mt-1">Perfect</h3>
-                        <p class="text-xs text-gray-500 truncate">Ed Sheeran / Nuestra Melodía</p>
-                    </div>
-                </div>
-
-                <!-- Custom audio controls -->
-                <div class="mt-6">
-                    <div class="w-full bg-romantic-100 h-2 rounded-full overflow-hidden mb-3 cursor-pointer" onclick="seekAudio(event)">
-                        <div id="progressBar" class="bg-romantic-500 h-full w-1/3 transition-all"></div>
-                    </div>
-                    <div class="flex items-center justify-between text-xs text-gray-400 mb-4">
-                        <span id="currentTime">1:12</span>
-                        <span id="duration">4:23</span>
-                    </div>
-
-                    <div class="flex items-center justify-center gap-6">
-                        <button class="text-gray-400 hover:text-romantic-600 transition" onclick="prevSong()">
-                            <i class="fa-solid fa-backward-step text-lg"></i>
-                        </button>
-                        <button id="playBtn" class="w-12 h-12 rounded-full bg-romantic-500 hover:bg-romantic-600 text-white flex items-center justify-center shadow-lg transition transform active:scale-95" onclick="togglePlay()">
-                            <i id="playIcon" class="fa-solid fa-pause"></i>
-                        </button>
-                        <button class="text-gray-400 hover:text-romantic-600 transition" onclick="nextSong()">
-                            <i class="fa-solid fa-forward-step text-lg"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 3: Interactive Question / Playful Proposal -->
-        <section class="bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl border-2 border-romantic-300 text-center relative overflow-hidden my-12">
-            <div class="pulse-heart inline-block text-romantic-500 mb-3 text-4xl">
-                <i class="fa-solid fa-heart-circle-check"></i>
-            </div>
-            
-            <h2 class="font-cursive text-4xl md:text-5xl text-romantic-700 mb-3">
-                ¿Aceptas seguir haciendo mi vida más feliz?
-            </h2>
-            <p class="text-gray-600 text-sm md:text-base max-w-lg mx-auto mb-8">
-                Tengo una pregunta muy seria para ti... ¿Aceptas ser mi cita oficial para siempre? 🌹
-            </p>
-
-            <!-- Buttons area -->
-            <div class="relative min-h-[120px] flex items-center justify-center gap-4 flex-wrap" id="buttonArea">
-                <button id="yesBtn" onclick="acceptProposal()" class="px-8 py-4 bg-gradient-to-r from-romantic-500 to-romantic-600 hover:from-romantic-600 hover:to-romantic-700 text-white font-bold text-lg rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition duration-200 z-20 flex items-center gap-2">
-                    <i class="fa-solid fa-heart"></i> ¡SÍ, ACEPTO! 💕
-                </button>
-
-                <button id="noBtn" class="px-8 py-4 bg-gray-200 text-gray-700 font-bold text-lg rounded-full shadow transition-all duration-150 absolute z-10">
-                    No 🙈
-                </button>
-            </div>
-        </section>
-
-        <!-- SECTION 4: Reason Cards Carousel / Gallery -->
-        <section class="space-y-6">
-            <div class="text-center">
-                <h2 class="font-cursive text-4xl text-romantic-700">Razones Por Las Que Te Amo</h2>
-                <p class="text-xs md:text-sm text-gray-600">Presiona cada tarjeta para descubrir una razón</p>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <!-- Card 1 -->
-                <div class="bg-white p-6 rounded-2xl shadow-md border border-romantic-100 hover:shadow-lg transition cursor-pointer transform hover:-translate-y-1" onclick="flipCard(this)">
-                    <div class="text-romantic-500 text-2xl mb-2"><i class="fa-solid fa-face-smile-beam"></i></div>
-                    <h3 class="font-bold text-romantic-800 text-base mb-1">Tu Sonrisa</h3>
-                    <p class="text-gray-600 text-xs">Tiene la capacidad mágica de iluminar mi día sin importar qué tan malo haya sido.</p>
-                </div>
-
-                <!-- Card 2 -->
-                <div class="bg-white p-6 rounded-2xl shadow-md border border-romantic-100 hover:shadow-lg transition cursor-pointer transform hover:-translate-y-1" onclick="flipCard(this)">
-                    <div class="text-romantic-500 text-2xl mb-2"><i class="fa-solid fa-hand-holding-heart"></i></div>
-                    <h3 class="font-bold text-romantic-800 text-base mb-1">Tu Bondad</h3>
-                    <p class="text-gray-600 text-xs">Tu forma de cuidar a los demás y tu corazón tan puro me enamoran todos los días.</p>
-                </div>
-
-                <!-- Card 3 -->
-                <div class="bg-white p-6 rounded-2xl shadow-md border border-romantic-100 hover:shadow-lg transition cursor-pointer transform hover:-translate-y-1" onclick="flipCard(this)">
-                    <div class="text-romantic-500 text-2xl mb-2"><i class="fa-solid fa-comments"></i></div>
-                    <h3 class="font-bold text-romantic-800 text-base mb-1">Nuestras Charlas</h3>
-                    <p class="text-gray-600 text-xs">Podemos hablar horas de cualquier tontería o de nuestros sueños más profundos.</p>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- SUCCESS POPUP MODAL -->
-    <div id="successModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border-4 border-romantic-300 transform scale-90 transition-transform duration-300 relative" id="modalContent">
-            
-            <div class="w-20 h-20 bg-romantic-100 text-romantic-600 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl pulse-heart">
-                <i class="fa-solid fa-heart-circle-bolt"></i>
-            </div>
-
-            <h3 class="font-cursive text-4xl text-romantic-700 mb-2">¡SABÍA QUE DIRÍAS QUE SÍ! 🎉</h3>
-            <p class="text-gray-600 text-sm mb-6">
-                Prometo hacerte sonreír cada día, cuidar siempre de ti y darte mucho amor. ¡Eres lo mejor que me ha pasado! ❤️✨
-            </p>
-
-            <button onclick="closeModal()" class="w-full py-3 bg-romantic-500 hover:bg-romantic-600 text-white font-bold rounded-xl shadow-lg transition">
-                ¡Te amo infinitamente! 💕
-            </button>
+    <div class="butterfly-container">
+        <div class="butterfly">
+            <div class="body"></div>
+            <div class="wing wing-left"></div>
+            <div class="wing wing-right"></div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="text-center text-xs text-romantic-700 mt-12 mb-4">
-        Hecho con ❤️ especialmente para ti
-    </footer>
+    <div class="message">✨ Algo hermoso para ti ✨</div>
 
-    <!-- JAVASCRIPT LOGIC -->
     <script>
-        // 1. GENERATE FLOATING HEARTS BACKGROUND
-        function createFloatingHearts() {
-            const container = document.getElementById('hearts-container');
-            const heartIcons = ['❤️', '💖', '💕', '💗', '🌹', '✨'];
-            
-            for (let i = 0; i < 25; i++) {
-                const heart = document.createElement('div');
-                heart.className = 'floating-heart';
-                heart.innerText = heartIcons[Math.floor(Math.random() * heartIcons.length)];
-                heart.style.left = Math.random() * 100 + 'vw';
-                heart.style.animationDuration = (Math.random() * 5 + 5) + 's';
-                heart.style.animationDelay = (Math.random() * 5) + 's';
-                heart.style.fontSize = (Math.random() * 15 + 15) + 'px';
-                container.appendChild(heart);
-            }
-        }
-
-        // 2. ENVELOPE TOGGLE FUNCTION
-        function toggleEnvelope() {
-            const envelope = document.getElementById('envelope');
-            envelope.classList.toggle('open');
-            
-            if(envelope.classList.contains('open')) {
-                // Trigger a tiny burst of confetti when opening the envelope
-                confetti({
-                    particleCount: 30,
-                    spread: 60,
-                    origin: { y: 0.6 }
-                });
-            }
-        }
-
-        // 3. PLAYFUL RUNAWAY BUTTON LOGIC ("NO" button escapes)
-        const noBtn = document.getElementById('noBtn');
-        const buttonArea = document.getElementById('buttonArea');
-
-        function moveNoButton() {
-            const areaRect = buttonArea.getBoundingClientRect();
-            const btnRect = noBtn.getBoundingClientRect();
-
-            // Calculate safe bounds within the container
-            const maxX = areaRect.width - btnRect.width - 20;
-            const maxY = areaRect.height - btnRect.height - 20;
-
-            const randomX = Math.max(10, Math.floor(Math.random() * maxX));
-            const randomY = Math.max(10, Math.floor(Math.random() * maxY));
-
-            noBtn.style.position = 'absolute';
-            noBtn.style.left = `${randomX}px`;
-            noBtn.style.top = `${randomY}px`;
-        }
-
-        // Trigger escape on hover (desktop) or touch (mobile)
-        noBtn.addEventListener('mouseenter', moveNoButton);
-        noBtn.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            moveNoButton();
-        });
-
-        // 4. ACCEPT PROPOSAL & CELEBRATION
-        function acceptProposal() {
-            // Heart-shaped confetti celebration
-            const duration = 3 * 1000;
-            const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
-
-            function randomInRange(min, max) {
-                return Math.random() * (max - min) + min;
-            }
-
-            const interval = setInterval(function() {
-                const timeLeft = animationEnd - Date.now();
-
-                if (timeLeft <= 0) {
-                    return clearInterval(interval);
-                }
-
-                const particleCount = 50 * (timeLeft / duration);
+        // Generador de partículas de luz de fondo
+        function createParticles() {
+            const count = 30;
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
                 
-                // Fireworks confetti
-                confetti(Object.assign({}, defaults, { 
-                    particleCount, 
-                    origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-                    colors: ['#ff4d6d', '#ff758f', '#ffb3c1', '#ffffff']
-                }));
-                confetti(Object.assign({}, defaults, { 
-                    particleCount, 
-                    origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-                    colors: ['#ff4d6d', '#ff758f', '#ffb3c1', '#ffffff']
-                }));
-            }, 250);
-
-            // Open popup modal
-            const modal = document.getElementById('successModal');
-            const modalContent = document.getElementById('modalContent');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                modalContent.classList.remove('scale-90');
-                modalContent.classList.add('scale-100');
-            }, 50);
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('successModal');
-            const modalContent = document.getElementById('modalContent');
-            modalContent.classList.remove('scale-100');
-            modalContent.classList.add('scale-90');
-            modal.classList.add('opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        }
-
-        // 5. TIME TOGETHER COUNTER (Example starting date: 1 year ago or custom date)
-        function startCounter() {
-            // You can adjust this date to your real anniversary date!
-            const startDate = new Date();
-            startDate.setFullYear(startDate.getFullYear() - 1); // Default: 1 year ago
-
-            function updateCounter() {
-                const now = new Date();
-                const diff = now - startDate;
-
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-                const minutes = Math.floor((diff / 1000 / 60) % 60);
-                const seconds = Math.floor((diff / 1000) % 60);
-
-                document.getElementById('days').innerText = String(days).padStart(2, '0');
-                document.getElementById('hours').innerText = String(hours).padStart(2, '0');
-                document.getElementById('minutes').innerText = String(minutes).padStart(2, '0');
-                document.getElementById('seconds').innerText = String(seconds).padStart(2, '0');
+                const size = Math.random() * 4 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${Math.random() * 100}vw`;
+                particle.style.animationDelay = `${Math.random() * 5}s`;
+                particle.style.animationDuration = `${Math.random() * 3 + 3}s`;
+                
+                document.body.appendChild(particle);
             }
-
-            updateCounter();
-            setInterval(updateCounter, 1000);
         }
 
-        // 6. SIMULATED MUSIC PLAYER LOGIC
-        let isPlaying = true;
-        function togglePlay() {
-            const playIcon = document.getElementById('playIcon');
-            const musicIcon = document.getElementById('musicIcon');
-            
-            if (isPlaying) {
-                playIcon.className = 'fa-solid fa-play';
-                musicIcon.style.animationPlayState = 'paused';
-            } else {
-                playIcon.className = 'fa-solid fa-pause';
-                musicIcon.style.animationPlayState = 'running';
-            }
-            isPlaying = !isPlaying;
-        }
-
-        function seekAudio(e) {
-            const bar = e.currentTarget;
-            const clickPosition = e.clientX - bar.getBoundingClientRect().left;
-            const percentage = (clickPosition / bar.clientWidth) * 100;
-            document.getElementById('progressBar').style.width = percentage + '%';
-        }
-
-        function flipCard(card) {
-            card.classList.add('ring-2', 'ring-romantic-400');
-            setTimeout(() => {
-                card.classList.remove('ring-2', 'ring-romantic-400');
-            }, 1000);
-        }
-
-        // INITIALIZATION ON LOAD
-        window.onload = function () {
-            createFloatingHearts();
-            startCounter();
-            
-            // Set initial position for 'No' button relative to container
-            noBtn.style.position = 'relative';
-        };
+        createParticles();
     </script>
 </body>
 </html>
