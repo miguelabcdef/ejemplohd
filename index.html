@@ -1,839 +1,451 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paisaje Procedural Realista</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
-            background-color: #000;
-            user-select: none;
-        }
-
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            cursor: pointer;
-        }
-
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .custom-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            height: 5px;
-            border-radius: 5px;
-            background: rgba(255, 255, 255, 0.2);
-            outline: none;
-        }
-
-        .custom-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #38bdf8;
-            cursor: pointer;
-            transition: transform 0.1s ease, background-color 0.2s ease;
-            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
-        }
-
-        .custom-slider::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-            background: #7dd3fc;
-        }
-
-        .toggle-btn {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateY(-1px);
-        }
-
-        .toggle-btn.active {
-            background: rgba(56, 189, 248, 0.25);
-            border-color: rgba(56, 189, 248, 0.5);
-            color: #38bdf8;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paisaje Realista Animado en Canvas HTML5</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #050a14;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    /* Controls hint overlay */
+    .overlay-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 13px;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 14px;
+      border-radius: 20px;
+      backdrop-filter: blur(4px);
+      user-select: none;
+      transition: opacity 0.5s ease;
+    }
+  </style>
 </head>
-<body class="relative w-screen h-screen overflow-hidden text-slate-100">
+<body>
 
-    <!-- Canvas principal -->
-    <canvas id="landscapeCanvas"></canvas>
+  <div class="overlay-hint">Mueve el cursor para alterar la brisa del viento</div>
+  <canvas id="landscapeCanvas"></canvas>
 
-    <!-- Panel de control interactivo -->
-    <div id="uiPanel" class="absolute top-4 left-4 z-10 glass-panel rounded-2xl p-4 sm:p-5 w-80 max-w-[calc(100vw-2rem)] transition-all duration-300 opacity-90 hover:opacity-100">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-base font-semibold tracking-wide text-white flex items-center gap-2">
-                <i class="fa-solid me-1 fa-mountain-sun text-sky-400"></i> Controles del Paisaje
-            </h1>
-            <button id="togglePanelBtn" class="text-slate-400 hover:text-white transition-colors">
-                <i class="fa-solid fa-chevron-up" id="toggleIcon"></i>
-            </button>
-        </div>
+  <script>
+    const canvas = document.getElementById('landscapeCanvas');
+    const ctx = canvas.getContext('2d');
 
-        <div id="panelContent" class="space-y-4 text-xs">
-            <!-- Selección rápida de hora -->
-            <div>
-                <label class="block text-slate-300 mb-1.5 font-medium">Momento del Día</label>
-                <div class="grid grid-cols-4 gap-1.5">
-                    <button class="toggle-btn px-2 py-1.5 rounded-lg border border-white/10 text-center font-medium" onclick="setPresetTime(0.22)">Amanecer</button>
-                    <button class="toggle-btn px-2 py-1.5 rounded-lg border border-white/10 text-center font-medium" onclick="setPresetTime(0.5)">Día</button>
-                    <button class="toggle-btn px-2 py-1.5 rounded-lg border border-white/10 text-center font-medium" onclick="setPresetTime(0.72)">Atardecer</button>
-                    <button class="toggle-btn px-2 py-1.5 rounded-lg border border-white/10 text-center font-medium" onclick="setPresetTime(0.95)">Noche</button>
-                </div>
-            </div>
+    let width, height;
+    let time = 0;
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetWindX = 1;
+    let windX = 1;
 
-            <!-- Control de hora slider -->
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-slate-300">Hora (<span id="timeDisplay">12:00</span>)</span>
-                </div>
-                <input type="range" id="timeSlider" min="0" max="1" step="0.001" value="0.5" class="w-full custom-slider">
-            </div>
+    // Track mouse movement to affect wind speed
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      const normX = (e.clientX / width) - 0.5;
+      targetWindX = 1 + normX * 2.5;
+    });
 
-            <!-- Velocidad del tiempo -->
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-slate-300">Velocidad del tiempo</span>
-                    <span id="speedDisplay" class="text-slate-400">Pausado</span>
-                </div>
-                <input type="range" id="speedSlider" min="0" max="0.002" step="0.0001" value="0" class="w-full custom-slider">
-            </div>
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      initBirds();
+      initParticles();
+    }
 
-            <!-- Viento -->
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-slate-300">Intensidad del viento</span>
-                    <span id="windDisplay" class="text-slate-400">Suave</span>
-                </div>
-                <input type="range" id="windSlider" min="0.2" max="3" step="0.1" value="1" class="w-full custom-slider">
-            </div>
+    // Perlin-like noise generator
+    function noise(x) {
+      return Math.sin(x) * 0.5 + Math.sin(x * 2.3) * 0.25 + Math.sin(x * 5.7) * 0.125;
+    }
 
-            <!-- Clima / Niebla -->
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-slate-300">Densidad de Niebla</span>
-                    <span id="fogDisplay" class="text-slate-400">Media</span>
-                </div>
-                <input type="range" id="fogSlider" min="0" max="1" step="0.05" value="0.4" class="w-full custom-slider">
-            </div>
+    // --- BIRD SIMULATION ---
+    const BIRDS_COUNT = 14;
+    let birds = [];
 
-            <!-- Botones de Acción -->
-            <div class="pt-2 flex gap-2">
-                <button onclick="regenerateLandscape()" class="flex-1 py-2 px-3 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-sky-300 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-arrows-rotate"></i> Regenerar
-                </button>
-                <button onclick="triggerShootingStar()" class="py-2 px-3 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-star"></i> Estrella
-                </button>
-            </div>
+    class Bird {
+      constructor() {
+        this.reset(true);
+      }
 
-            <div class="text-[10px] text-slate-400 text-center pt-1 border-t border-white/5">
-                💡 Haz clic en el agua para crear ondas o en el cielo para estrellas fugaces.
-            </div>
-        </div>
-    </div>
+      reset(randomX = false) {
+        this.x = randomX ? Math.random() * width : -30 - Math.random() * 100;
+        this.y = height * (0.12 + Math.random() * 0.28);
+        this.size = 0.6 + Math.random() * 0.7;
+        this.speedX = (1.2 + Math.random() * 0.9) * this.size;
+        this.speedY = (Math.random() - 0.5) * 0.3;
+        this.wingSpeed = 0.08 + Math.random() * 0.04;
+        this.wingPhase = Math.random() * Math.PI * 2;
+        this.color = `rgba(${15 + Math.floor(Math.random() * 20)}, ${10 + Math.floor(Math.random() * 15)}, ${25 + Math.floor(Math.random() * 20)}, ${0.85 + Math.random() * 0.15})`;
+      }
 
-    <script>
-        // Configuración principal
-        const canvas = document.getElementById('landscapeCanvas');
-        const ctx = canvas.getContext('2d');
+      update() {
+        this.x += this.speedX * (0.8 + windX * 0.3);
+        this.y += this.speedY + Math.sin(time * 0.02 + this.wingPhase) * 0.25;
+        this.wingPhase += this.wingSpeed * (0.8 + windX * 0.2);
 
-        let width, height;
-        let time = 0.5; // 0 = Medianoche, 0.25 = Amanecer, 0.5 = Mediodía, 0.75 = Atardecer
-        let timeSpeed = 0;
-        let windSpeed = 1;
-        let fogDensity = 0.4;
-        let animationFrame;
+        // Reset if off-screen
+        if (this.x > width + 50) {
+          this.reset(false);
+        }
+      }
 
-        // Elementos procedurales guardados
-        let mountainRanges = [];
-        let hills = [];
-        let trees = [];
-        let stars = [];
-        let clouds = [];
-        let ripples = [];
-        let shootingStars = [];
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
 
-        // Inicialización y Resize
-        function resizeCanvas() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            generateLandscape();
+        // Flapping motion calculation
+        const wingAngle = Math.sin(this.wingPhase) * 0.75;
+        const wingSpan = 18 * this.size;
+        const bodyLen = 12 * this.size;
+
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1.8 * this.size;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Draw bird silhouette (v-shape flapping wings)
+        ctx.beginPath();
+        // Left wing tip to center
+        const leftWingY = -wingAngle * wingSpan * 0.5;
+        const rightWingY = -wingAngle * wingSpan * 0.5;
+
+        ctx.moveTo(-wingSpan, leftWingY);
+        ctx.quadraticCurveTo(-wingSpan * 0.4, leftWingY * 0.3 - 2, 0, 0);
+        ctx.quadraticCurveTo(wingSpan * 0.4, rightWingY * 0.3 - 2, wingSpan, rightWingY);
+        ctx.stroke();
+
+        // Small bird body center accent
+        ctx.beginPath();
+        ctx.ellipse(0, 0, bodyLen * 0.3, bodyLen * 0.15, 0.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    function initBirds() {
+      birds = [];
+      for (let i = 0; i < BIRDS_COUNT; i++) {
+        birds.push(new Bird());
+      }
+    }
+
+    // --- PARTICLES SIMULATION ---
+    const PARTICLES_COUNT = 65;
+    let particles = [];
+
+    class Particle {
+      constructor() {
+        this.reset(true);
+      }
+
+      reset(randomY = false) {
+        this.x = Math.random() * width;
+        this.y = randomY ? Math.random() * height : -10;
+        this.size = 1 + Math.random() * 2.5;
+        this.vx = (0.5 + Math.random() * 1.2);
+        this.vy = (0.2 + Math.random() * 0.6);
+        this.alpha = 0.2 + Math.random() * 0.6;
+        this.oscFreq = 0.01 + Math.random() * 0.03;
+        this.colorHue = Math.random() > 0.5 ? '255, 200, 140' : '255, 160, 100'; // Warm glowing pollen
+      }
+
+      update() {
+        this.x += this.vx * windX + Math.sin(time * this.oscFreq) * 0.5;
+        this.y += this.vy;
+
+        if (this.x > width + 20) this.x = -10;
+        if (this.x < -20) this.x = width + 10;
+        if (this.y > height + 10) this.reset(false);
+      }
+
+      draw() {
+        ctx.save();
+        ctx.fillStyle = `rgba(${this.colorHue}, ${this.alpha})`;
+        ctx.shadowColor = 'rgba(255, 180, 100, 0.5)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function initParticles() {
+      particles = [];
+      for (let i = 0; i < PARTICLES_COUNT; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function drawSky() {
+      // Atmospheric gradient (Sunset)
+      const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.65);
+      skyGradient.addColorStop(0.0, '#0c1b33'); // Top night blue
+      skyGradient.addColorStop(0.3, '#2a3b5c'); // Twilight blue
+      skyGradient.addColorStop(0.6, '#6b3e56'); // Purple/Magenta
+      skyGradient.addColorStop(0.85, '#d96b43'); // Warm orange
+      skyGradient.addColorStop(1.0, '#f2a057'); // Horizon yellow
+
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Sun glow
+      const sunX = width * 0.65;
+      const sunY = height * 0.48;
+      const sunRadius = Math.min(width, height) * 0.08;
+
+      const sunGlow = ctx.createRadialGradient(sunX, sunY, sunRadius * 0.2, sunX, sunY, sunRadius * 3.2);
+      sunGlow.addColorStop(0, 'rgba(255, 245, 220, 1)');
+      sunGlow.addColorStop(0.2, 'rgba(255, 180, 100, 0.8)');
+      sunGlow.addColorStop(0.5, 'rgba(235, 110, 60, 0.3)');
+      sunGlow.addColorStop(1, 'rgba(235, 110, 60, 0)');
+
+      ctx.fillStyle = sunGlow;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, sunRadius * 3.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cirrus clouds with subtle drift
+      drawClouds();
+    }
+
+    function drawClouds() {
+      ctx.save();
+      for (let i = 0; i < 7; i++) {
+        const cloudY = height * (0.1 + i * 0.06);
+        const drift = (time * 0.15 * (i + 1)) % width;
+        const cloudGradient = ctx.createLinearGradient(0, cloudY, width, cloudY);
+        cloudGradient.addColorStop(0, 'rgba(255, 180, 150, 0)');
+        cloudGradient.addColorStop(0.3, `rgba(250, 160, 140, ${0.15 + i * 0.02})`);
+        cloudGradient.addColorStop(0.7, `rgba(180, 100, 130, ${0.2 + i * 0.02})`);
+        cloudGradient.addColorStop(1, 'rgba(255, 180, 150, 0)');
+
+        ctx.fillStyle = cloudGradient;
+        ctx.beginPath();
+        ctx.moveTo(0, cloudY);
+
+        for (let x = 0; x <= width; x += 20) {
+          const dy = noise((x + drift) * 0.005 + i * 10) * 25 + Math.sin((x + drift) * 0.002) * 15;
+          ctx.lineTo(x, cloudY + dy);
         }
 
-        window.addEventListener('resize', resizeCanvas);
+        ctx.lineTo(width, cloudY + 40);
+        ctx.lineTo(0, cloudY + 40);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
 
-        // Función de Ruido Simplex/Perlin simplificada 1D para generación procedural
-        function pseudoNoise(x) {
-            let n = Math.sin(x * 12.9898 + 78.233) * 43758.5453;
-            return n - Math.floor(n);
+    function drawMountainRange(baselineY, amplitude, frequency, colorStops, octaves = 4) {
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+
+      for (let x = 0; x <= width; x += 2) {
+        let y = baselineY;
+        let currAmp = amplitude;
+        let currFreq = frequency;
+
+        for (let o = 0; o < octaves; o++) {
+          y += noise(x * currFreq + o * 100) * currAmp;
+          currAmp *= 0.45;
+          currFreq *= 2.1;
         }
 
-        function smoothNoise(x) {
-            let i = Math.floor(x);
-            let f = x - i;
-            let u = f * f * (3.0 - 2.0 * f);
-            return (1 - u) * pseudoNoise(i) + u * pseudoNoise(i + 1);
-        }
-
-        function octaveNoise(x, octaves = 4, persistence = 0.5) {
-            let total = 0;
-            let frequency = 1;
-            let amplitude = 1;
-            let maxValue = 0;
-            for (let i = 0; i < octaves; i++) {
-                total += smoothNoise(x * frequency) * amplitude;
-                maxValue += amplitude;
-                amplitude *= persistence;
-                frequency *= 2;
-            }
-            return total / maxValue;
-        }
-
-        function generateLandscape() {
-            mountainRanges = [];
-            hills = [];
-            trees = [];
-            stars = [];
-            clouds = [];
-
-            // 1. Estrellas
-            const starCount = Math.floor((width * height) / 3000);
-            for (let i = 0; i < starCount; i++) {
-                stars.push({
-                    x: Math.random() * width,
-                    y: Math.random() * (height * 0.6),
-                    size: Math.random() * 1.5 + 0.5,
-                    alpha: Math.random(),
-                    blinkSpeed: Math.random() * 0.02 + 0.005
-                });
-            }
-
-            // 2. Nubes
-            const cloudCount = 12;
-            for (let i = 0; i < cloudCount; i++) {
-                clouds.push({
-                    x: Math.random() * width * 1.5 - width * 0.25,
-                    y: Math.random() * (height * 0.35),
-                    scale: Math.random() * 0.8 + 0.4,
-                    speed: (Math.random() * 0.2 + 0.1),
-                    opacity: Math.random() * 0.4 + 0.3,
-                    seed: Math.random() * 1000
-                });
-            }
-
-            // 3. Cadena de montañas lejanas (Fondo)
-            mountainRanges.push(generateMountains(height * 0.45, height * 0.22, 0.002, 1, "#1a233a"));
-            // Cadena de montañas medias
-            mountainRanges.push(generateMountains(height * 0.52, height * 0.18, 0.0035, 2, "#121a2d"));
-
-            // 4. Colinas suave en segundo plano
-            hills.push(generateHill(height * 0.6, height * 0.1, 0.002, "#0b1320"));
-            hills.push(generateHill(height * 0.65, height * 0.08, 0.003, "#070d17"));
-
-            // 5. Arboles en las colinas
-            const treeCount = Math.floor(width / 15);
-            for (let i = 0; i < treeCount; i++) {
-                let x = Math.random() * width;
-                let hillIndex = Math.random() > 0.5 ? 0 : 1;
-                let hillY = getHillHeight(x, hills[hillIndex]);
-                
-                // Evitar árboles en el centro profundo si hay río
-                trees.push({
-                    x: x,
-                    y: hillY,
-                    height: Math.random() * 25 + 20,
-                    width: Math.random() * 12 + 10,
-                    type: Math.random() > 0.4 ? 'pine' : 'deciduous',
-                    colorVariation: Math.random() * 0.2 - 0.1
-                });
-            }
-
-            // Ordenar árboles por Y para profundidad de renderizado
-            trees.sort((a, b) => a.y - b.y);
-        }
-
-        function generateMountains(baseY, amplitude, frequency, seed, color) {
-            let points = [];
-            let step = 4;
-            for (let x = 0; x <= width + step; x += step) {
-                let n = octaveNoise((x + seed * 500) * frequency, 5, 0.5);
-                let y = baseY - n * amplitude;
-                points.push({ x: x, y: y });
-            }
-            return { points, color, baseY };
-        }
-
-        function generateHill(baseY, amplitude, frequency, color) {
-            return { baseY, amplitude, frequency, color, seed: Math.random() * 100 };
-        }
-
-        function getHillHeight(x, hill) {
-            let n = Math.sin((x + hill.seed * 100) * hill.frequency) * 0.5 + 0.5;
-            let n2 = Math.cos((x * 0.5 + hill.seed * 50) * hill.frequency * 1.5) * 0.25;
-            return hill.baseY - (n + n2) * hill.amplitude;
-        }
-
-        // Paletas de colores del cielo para diferentes momentos del día
-        const skyColors = [
-            { t: 0.00, skyTop: [5, 8, 22], skyBot: [15, 23, 42], sun: false, light: 0.1 },      // Noche profunda
-            { t: 0.20, skyTop: [12, 18, 38], skyBot: [45, 27, 55], sun: false, light: 0.2 },     // Madrugada
-            { t: 0.25, skyTop: [40, 50, 90], skyBot: [235, 130, 90], sun: true, light: 0.6 },    // Amanecer
-            { t: 0.35, skyTop: [50, 130, 220], skyBot: [180, 220, 245], sun: true, light: 0.9 }, // Mañana
-            { t: 0.50, skyTop: [30, 110, 205], skyBot: [160, 210, 240], sun: true, light: 1.0 }, // Mediodía
-            { t: 0.65, skyTop: [40, 90, 190], skyBot: [220, 180, 140], sun: true, light: 0.8 },  // Tarde
-            { t: 0.73, skyTop: [20, 30, 70], skyBot: [240, 90, 60], sun: true, light: 0.5 },     // Atardecer
-            { t: 0.80, skyTop: [10, 15, 40], skyBot: [70, 35, 60], sun: false, light: 0.25 },   // Anochecer
-            { t: 1.00, skyTop: [5, 8, 22], skyBot: [15, 23, 42], sun: false, light: 0.1 }       // Noche
-        ];
-
-        function getSkyState(t) {
-            let i = 0;
-            while (i < skyColors.length - 1 && skyColors[i + 1].t < t) {
-                i++;
-            }
-            let c1 = skyColors[i];
-            let c2 = skyColors[i + 1] || skyColors[i];
-            let factor = (t - c1.t) / (c2.t - c1.t || 1);
-
-            let interpolate = (a, b) => Math.round(a + (b - a) * factor);
-
-            return {
-                skyTop: `rgb(${interpolate(c1.skyTop[0], c2.skyTop[0])}, ${interpolate(c1.skyTop[1], c2.skyTop[1])}, ${interpolate(c1.skyTop[2], c2.skyTop[2])})`,
-                skyBot: `rgb(${interpolate(c1.skyBot[0], c2.skyBot[0])}, ${interpolate(c1.skyBot[1], c2.skyBot[1])}, ${interpolate(c1.skyBot[2], c2.skyBot[2])})`,
-                lightLevel: c1.light + (c2.light - c1.light) * factor,
-                rawTop: [interpolate(c1.skyTop[0], c2.skyTop[0]), interpolate(c1.skyTop[1], c2.skyTop[1]), interpolate(c1.skyTop[2], c2.skyTop[2])],
-                rawBot: [interpolate(c1.skyBot[0], c2.skyBot[0]), interpolate(c1.skyBot[1], c2.skyBot[1]), interpolate(c1.skyBot[2], c2.skyBot[2])]
-            };
-        }
-
-        // Posición del Sol / Luna en arco
-        function getCelestialPosition(t) {
-            // El sol sale por la izquierda a t=0.2 y se pone por la derecha a t=0.8
-            let angle = ((t - 0.2) / 0.6) * Math.PI;
-            let cx = width * 0.5 - Math.cos(angle) * (width * 0.45);
-            let cy = height * 0.65 - Math.sin(angle) * (height * 0.45);
-            let isSun = t >= 0.2 && t <= 0.8;
-
-            // Posición de la luna en la noche opuesta
-            if (!isSun) {
-                let nightT = t > 0.8 ? (t - 0.8) / 0.4 : (t + 0.2) / 0.4;
-                let nightAngle = nightT * Math.PI;
-                cx = width * 0.5 - Math.cos(nightAngle) * (width * 0.45);
-                cy = height * 0.65 - Math.sin(nightAngle) * (height * 0.45);
-            }
-
-            return { x: cx, y: cy, isSun };
-        }
-
-        function drawSky(skyState, celestial) {
-            // Fondo degradado del cielo
-            let grad = ctx.createLinearGradient(0, 0, 0, height * 0.7);
-            grad.addColorStop(0, skyState.skyTop);
-            grad.addColorStop(1, skyState.skyBot);
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, width, height);
-
-            // Dibujar Estrellas si es de noche/crepúsculo
-            let starOpacity = Math.max(0, Math.min(1, (0.4 - skyState.lightLevel) * 2.5));
-            if (starOpacity > 0) {
-                ctx.save();
-                stars.forEach(s => {
-                    s.alpha += s.blinkSpeed;
-                    let currentAlpha = (Math.sin(s.alpha) * 0.5 + 0.5) * starOpacity;
-                    ctx.fillStyle = `rgba(255, 255, 255, ${currentAlpha})`;
-                    ctx.beginPath();
-                    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                ctx.restore();
-            }
-
-            // Sol o Luna
-            ctx.save();
-            if (celestial.isSun) {
-                // Brillo del Sol
-                let sunGlow = ctx.createRadialGradient(celestial.x, celestial.y, 10, celestial.x, celestial.y, 120);
-                sunGlow.addColorStop(0, 'rgba(255, 250, 220, 1)');
-                sunGlow.addColorStop(0.2, 'rgba(255, 220, 120, 0.8)');
-                sunGlow.addColorStop(0.6, 'rgba(255, 140, 50, 0.2)');
-                sunGlow.addColorStop(1, 'rgba(255, 100, 0, 0)');
-                ctx.fillStyle = sunGlow;
-                ctx.beginPath();
-                ctx.arc(celestial.x, celestial.y, 120, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Núcleo del Sol
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(celestial.x, celestial.y, 22, 0, Math.PI * 2);
-                ctx.fill();
-            } else {
-                // Brillo de Luna
-                let moonGlow = ctx.createRadialGradient(celestial.x, celestial.y, 5, celestial.x, celestial.y, 60);
-                moonGlow.addColorStop(0, 'rgba(220, 235, 255, 0.8)');
-                moonGlow.addColorStop(0.5, 'rgba(180, 210, 255, 0.2)');
-                moonGlow.addColorStop(1, 'rgba(150, 180, 255, 0)');
-                ctx.fillStyle = moonGlow;
-                ctx.beginPath();
-                ctx.arc(celestial.x, celestial.y, 60, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Cuerpo de la Luna
-                ctx.fillStyle = '#f0f4f8';
-                ctx.beginPath();
-                ctx.arc(celestial.x, celestial.y, 16, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Sombra suave de cráter/fase en luna
-                ctx.fillStyle = 'rgba(200, 210, 225, 0.3)';
-                ctx.beginPath();
-                ctx.arc(celestial.x - 4, celestial.y - 2, 14, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.restore();
-        }
-
-        function drawClouds(skyState, celestial) {
-            ctx.save();
-            clouds.forEach(cloud => {
-                // Mover nubes con viento
-                cloud.x += cloud.speed * windSpeed;
-                if (cloud.x > width + 200) cloud.x = -200;
-
-                let cloudColor = skyState.lightLevel > 0.4 
-                    ? `rgba(255, 255, 255, ${cloud.opacity})` 
-                    : `rgba(${skyState.rawBot[0] + 30}, ${skyState.rawBot[1] + 30}, ${skyState.rawBot[2] + 40}, ${cloud.opacity * 0.8})`;
-
-                ctx.fillStyle = cloudColor;
-                
-                // Dibujar forma de nube orgánica con múltiples arcos
-                ctx.beginPath();
-                let cx = cloud.x;
-                let cy = cloud.y;
-                let s = cloud.scale;
-
-                ctx.arc(cx, cy, 25 * s, 0, Math.PI * 2);
-                ctx.arc(cx + 20 * s, cy - 10 * s, 30 * s, 0, Math.PI * 2);
-                ctx.arc(cx + 45 * s, cy - 5 * s, 22 * s, 0, Math.PI * 2);
-                ctx.arc(cx + 60 * s, cy + 5 * s, 18 * s, 0, Math.PI * 2);
-                ctx.arc(cx + 30 * s, cy + 10 * s, 25 * s, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.restore();
-        }
-
-        function drawMountains(skyState, celestial) {
-            mountainRanges.forEach((range, index) => {
-                ctx.save();
-
-                // Tintado atmosférico basado en hora del día
-                let factor = (index + 1) / mountainRanges.length;
-                let r = Math.round(skyState.rawBot[0] * (1 - factor * 0.5) + 15 * factor);
-                let g = Math.round(skyState.rawBot[1] * (1 - factor * 0.5) + 25 * factor);
-                let b = Math.round(skyState.rawBot[2] * (1 - factor * 0.5) + 45 * factor);
-
-                let mountainColor = `rgb(${r}, ${g}, ${b})`;
-
-                ctx.fillStyle = mountainColor;
-                ctx.beginPath();
-                ctx.moveTo(0, height);
-                range.points.forEach(p => {
-                    ctx.lineTo(p.x, p.y);
-                });
-                ctx.lineTo(width, height);
-                ctx.closePath();
-                ctx.fill();
-
-                // Sombras de relieve en montañas
-                ctx.fillStyle = `rgba(0, 0, 0, ${0.15 * (1 - skyState.lightLevel * 0.5)})`;
-                ctx.beginPath();
-                ctx.moveTo(0, height);
-                for (let i = 0; i < range.points.length - 1; i++) {
-                    let p1 = range.points[i];
-                    let p2 = range.points[i + 1];
-                    // Si la pendiente va en contra de la luz celestina
-                    if ((celestial.x < p1.x && p2.y < p1.y) || (celestial.x > p1.x && p2.y > p1.y)) {
-                        ctx.lineTo(p1.x, p1.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        ctx.lineTo(p2.x, p2.y + 40);
-                    }
-                }
-                ctx.lineTo(width, height);
-                ctx.closePath();
-                ctx.fill();
-
-                ctx.restore();
-            });
-        }
-
-        function drawHills(skyState) {
-            hills.forEach((hill, index) => {
-                ctx.save();
-                let darkFactor = 0.2 + index * 0.15;
-                let r = Math.round(skyState.rawBot[0] * 0.2 + 10 * (1 - darkFactor));
-                let g = Math.round(skyState.rawBot[1] * 0.3 + 25 * (1 - darkFactor));
-                let b = Math.round(skyState.rawBot[2] * 0.2 + 15 * (1 - darkFactor));
-
-                ctx.fillStyle = `rgb(${r},${g},${b})`;
-                ctx.beginPath();
-                ctx.moveTo(0, height);
-
-                let step = 5;
-                for (let x = 0; x <= width + step; x += step) {
-                    let y = getHillHeight(x, hill);
-                    ctx.lineTo(x, y);
-                }
-
-                ctx.lineTo(width, height);
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-            });
-        }
-
-        function drawTrees(skyState) {
-            ctx.save();
-            trees.forEach(tree => {
-                let light = skyState.lightLevel;
-                // Color silueta / tinte nocturno
-                let baseR = Math.round(10 + 20 * light);
-                let baseG = Math.round(25 + 55 * light + tree.colorVariation * 30);
-                let baseB = Math.round(15 + 25 * light);
-
-                let trunkColor = `rgb(${Math.round(20 * light + 10)}, ${Math.round(15 * light + 5)}, ${Math.round(10 * light + 5)})`;
-                let foliageColor = `rgb(${baseR}, ${baseG}, ${baseB})`;
-
-                // Tronco
-                ctx.fillStyle = trunkColor;
-                ctx.fillRect(tree.x - tree.width * 0.15, tree.y - tree.height * 0.3, tree.width * 0.3, tree.height * 0.3);
-
-                // Follaje pino o frondoso
-                ctx.fillStyle = foliageColor;
-                if (tree.type === 'pine') {
-                    // Árbol tipo pino en capas
-                    let layers = 3;
-                    for (let i = 0; i < layers; i++) {
-                        let layerY = tree.y - tree.height * 0.25 - (i * tree.height * 0.25);
-                        let layerW = tree.width * (1 - i * 0.25);
-                        
-                        // Efecto suave de viento
-                        let windOffset = Math.sin(Date.now() * 0.003 + tree.x) * (windSpeed * 1.5) * (i + 1);
-
-                        ctx.beginPath();
-                        ctx.moveTo(tree.x + windOffset, layerY - tree.height * 0.3);
-                        ctx.lineTo(tree.x - layerW / 2, layerY);
-                        ctx.lineTo(tree.x + layerW / 2, layerY);
-                        ctx.closePath();
-                        ctx.fill();
-                    }
-                } else {
-                    // Árbol frondoso redondeado
-                    let windOffset = Math.sin(Date.now() * 0.002 + tree.x) * (windSpeed * 2);
-                    ctx.beginPath();
-                    ctx.arc(tree.x + windOffset, tree.y - tree.height * 0.6, tree.width * 0.6, 0, Math.PI * 2);
-                    ctx.arc(tree.x - tree.width * 0.3 + windOffset, tree.y - tree.height * 0.4, tree.width * 0.45, 0, Math.PI * 2);
-                    ctx.arc(tree.x + tree.width * 0.3 + windOffset, tree.y - tree.height * 0.4, tree.width * 0.45, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            });
-            ctx.restore();
-        }
-
-        function drawWater(skyState, celestial) {
-            let waterWaterline = height * 0.63; // Inicio del agua
-            let waterHeight = height - waterWaterline;
-
-            ctx.save();
-
-            // Gradient base del agua
-            let waterGrad = ctx.createLinearGradient(0, waterWaterline, 0, height);
-            let r = Math.round(skyState.rawBot[0] * 0.6);
-            let g = Math.round(skyState.rawBot[1] * 0.7);
-            let b = Math.round(skyState.rawBot[2] * 0.85);
-
-            waterGrad.addColorStop(0, `rgb(${r}, ${g}, ${b})`);
-            waterGrad.addColorStop(1, `rgb(${Math.round(r * 0.4)}, ${Math.round(g * 0.5)}, ${Math.round(b * 0.6)})`);
-            
-            ctx.fillStyle = waterGrad;
-            ctx.fillRect(0, waterWaterline, width, waterHeight);
-
-            // 1. Reflejo del Sol / Luna en el agua
-            if (celestial.y < waterWaterline) {
-                let relX = celestial.x;
-                let relWidth = celestial.isSun ? 80 : 40;
-
-                ctx.save();
-                let refGrad = ctx.createLinearGradient(relX - relWidth, waterWaterline, relX + relWidth, waterWaterline);
-                let col = celestial.isSun ? '255, 200, 120' : '200, 230, 255';
-                
-                refGrad.addColorStop(0, `rgba(${col}, 0)`);
-                refGrad.addColorStop(0.5, `rgba(${col}, 0.6)`);
-                refGrad.addColorStop(1, `rgba(${col}, 0)`);
-
-                ctx.fillStyle = refGrad;
-
-                // Ondas del reflejo
-                let timeOffset = Date.now() * 0.003;
-                for (let y = waterWaterline; y < height; y += 4) {
-                    let progress = (y - waterWaterline) / waterHeight;
-                    let waveW = relWidth * (1 + progress * 2) + Math.sin(y * 0.1 + timeOffset) * 10 * windSpeed;
-                    let alpha = (1 - progress) * 0.5;
-
-                    ctx.globalAlpha = alpha;
-                    ctx.fillRect(relX - waveW / 2, y, waveW, 2);
-                }
-                ctx.restore();
-            }
-
-            // 2. Ondas de superficie del agua animadas
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.08 + skyState.lightLevel * 0.08})`;
-            ctx.lineWidth = 1;
-
-            let waveTime = Date.now() * 0.002 * windSpeed;
-            for (let i = 0; i < 25; i++) {
-                let y = waterWaterline + (i / 25) * waterHeight;
-                let speed = (i + 1) * 0.2;
-                
-                ctx.beginPath();
-                for (let x = 0; x < width; x += 20) {
-                    let waveY = y + Math.sin(x * 0.01 + waveTime * speed + i) * (1.5 + i * 0.1) * windSpeed;
-                    if (x === 0) ctx.moveTo(x, waveY);
-                    else ctx.lineTo(x, waveY);
-                }
-                ctx.stroke();
-            }
-
-            // 3. Dibujar Ondas Interactivas provocadas por clicks
-            for (let i = ripples.length - 1; i >= 0; i--) {
-                let rip = ripples[i];
-                rip.radius += 1.2;
-                rip.alpha -= 0.012;
-
-                if (rip.alpha <= 0) {
-                    ripples.splice(i, 1);
-                    continue;
-                }
-
-                ctx.save();
-                ctx.strokeStyle = `rgba(255, 255, 255, ${rip.alpha})`;
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                // Elipse para perspectiva 3D
-                ctx.ellipse(rip.x, rip.y, rip.radius, rip.radius * 0.3, 0, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            ctx.restore();
-        }
-
-        function drawFog(skyState) {
-            if (fogDensity <= 0) return;
-
-            ctx.save();
-            let fogY = height * 0.52;
-            let fogGrad = ctx.createLinearGradient(0, fogY - 40, 0, height * 0.7);
-            
-            let fogAlpha = fogDensity * 0.4 * (0.6 + skyState.lightLevel * 0.4);
-            let fogColor = `rgba(${skyState.rawBot[0]}, ${skyState.rawBot[1]}, ${skyState.rawBot[2]}, ${fogAlpha})`;
-
-            fogGrad.addColorStop(0, 'rgba(0,0,0,0)');
-            fogGrad.addColorStop(0.4, fogColor);
-            fogGrad.addColorStop(1, 'rgba(0,0,0,0)');
-
-            ctx.fillStyle = fogGrad;
-            ctx.fillRect(0, fogY - 40, width, height * 0.25);
-            ctx.restore();
-        }
-
-        function drawShootingStars() {
-            ctx.save();
-            for (let i = shootingStars.length - 1; i >= 0; i--) {
-                let st = shootingStars[i];
-                st.x += st.vx;
-                st.y += st.vy;
-                st.life -= st.decay;
-
-                if (st.life <= 0) {
-                    shootingStars.splice(i, 1);
-                    continue;
-                }
-
-                let grad = ctx.createLinearGradient(st.x, st.y, st.x - st.vx * 10, st.y - st.vy * 10);
-                grad.addColorStop(0, `rgba(255, 255, 255, ${st.life})`);
-                grad.addColorStop(1, `rgba(255, 255, 255, 0)`);
-
-                ctx.strokeStyle = grad;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(st.x, st.y);
-                ctx.lineTo(st.x - st.vx * 8, st.y - st.vy * 8);
-                ctx.stroke();
-            }
-            ctx.restore();
-        }
-
-        function triggerShootingStar(startX, startY) {
-            let x = startX || Math.random() * width * 0.8;
-            let y = startY || Math.random() * (height * 0.3);
-            shootingStars.push({
-                x: x,
-                y: y,
-                vx: Math.random() * 8 + 6,
-                vy: Math.random() * 4 + 2,
-                life: 1.0,
-                decay: Math.random() * 0.02 + 0.015
-            });
-        }
-
-        function animate() {
-            // Avanzar el tiempo según la velocidad seleccionada
-            if (timeSpeed > 0) {
-                time = (time + timeSpeed) % 1.0;
-                document.getElementById('timeSlider').value = time;
-                updateTimeDisplay();
-            }
-
-            // Limpiar canvas
-            ctx.clearRect(0, 0, width, height);
-
-            // Obtener estado atmosférico actual
-            let skyState = getSkyState(time);
-            let celestial = getCelestialPosition(time);
-
-            // Renderizar la escena por capas de profundidad (Back to Front)
-            drawSky(skyState, celestial);
-            drawShootingStars();
-            drawClouds(skyState, celestial);
-            drawMountains(skyState, celestial);
-            drawHills(skyState);
-            drawTrees(skyState);
-            drawFog(skyState);
-            drawWater(skyState, celestial);
-
-            animationFrame = requestAnimationFrame(animate);
-        }
-
-        // Click interactivo en la escena
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
-
-            const waterLine = height * 0.63;
-
-            if (clickY >= waterLine) {
-                // Crear ondas en el agua
-                ripples.push({
-                    x: clickX,
-                    y: clickY,
-                    radius: 2,
-                    alpha: 0.8
-                });
-            } else {
-                // Disparar estrella fugaz en el cielo
-                triggerShootingStar(clickX, clickY);
-            }
-        });
-
-        // Controles UI
-        const timeSlider = document.getElementById('timeSlider');
-        const speedSlider = document.getElementById('speedSlider');
-        const windSlider = document.getElementById('windSlider');
-        const fogSlider = document.getElementById('fogSlider');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const speedDisplay = document.getElementById('speedDisplay');
-        const windDisplay = document.getElementById('windDisplay');
-        const fogDisplay = document.getElementById('fogDisplay');
-
-        function updateTimeDisplay() {
-            let totalMinutes = Math.floor(time * 24 * 60);
-            let hours = Math.floor(totalMinutes / 60);
-            let minutes = totalMinutes % 60;
-            timeDisplay.innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        }
-
-        timeSlider.addEventListener('input', (e) => {
-            time = parseFloat(e.target.value);
-            updateTimeDisplay();
-        });
-
-        speedSlider.addEventListener('input', (e) => {
-            timeSpeed = parseFloat(e.target.value);
-            if (timeSpeed === 0) speedDisplay.innerText = "Pausado";
-            else if (timeSpeed < 0.0005) speedDisplay.innerText = "Lento";
-            else if (timeSpeed < 0.0012) speedDisplay.innerText = "Normal";
-            else speedDisplay.innerText = "Rápido";
-        });
-
-        windSlider.addEventListener('input', (e) => {
-            windSpeed = parseFloat(e.target.value);
-            if (windSpeed < 0.8) windDisplay.innerText = "Calma";
-            else if (windSpeed < 1.8) windDisplay.innerText = "Suave";
-            else windDisplay.innerText = "Fuerte";
-        });
-
-        fogSlider.addEventListener('input', (e) => {
-            fogDensity = parseFloat(e.target.value);
-            if (fogDensity === 0) fogDisplay.innerText = "Despejado";
-            else if (fogDensity < 0.5) fogDisplay.innerText = "Media";
-            else fogDisplay.innerText = "Densa";
-        });
-
-        function setPresetTime(t) {
-            time = t;
-            timeSlider.value = t;
-            updateTimeDisplay();
-        }
-
-        function regenerateLandscape() {
-            generateLandscape();
-        }
-
-        // Minimizar / Maximizar Panel de Control
-        const togglePanelBtn = document.getElementById('togglePanelBtn');
-        const panelContent = document.getElementById('panelContent');
-        const toggleIcon = document.getElementById('toggleIcon');
-        let isPanelOpen = true;
-
-        togglePanelBtn.addEventListener('click', () => {
-            isPanelOpen = !isPanelOpen;
-            if (isPanelOpen) {
-                panelContent.classList.remove('hidden');
-                toggleIcon.className = 'fa-solid fa-chevron-up';
-            } else {
-                panelContent.classList.add('hidden');
-                toggleIcon.className = 'fa-solid fa-chevron-down';
-            }
-        });
-
-        // Inicialización al cargar ventana
-        window.onload = function() {
-            resizeCanvas();
-            updateTimeDisplay();
-            animate();
-        };
-    </script>
+        ctx.lineTo(x, y);
+      }
+
+      ctx.lineTo(width, height);
+      ctx.closePath();
+
+      const grad = ctx.createLinearGradient(0, baselineY - amplitude, 0, height);
+      colorStops.forEach(stop => grad.addColorStop(stop.offset, stop.color));
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    function drawLake(horizonY) {
+      // Reflective lake
+      const lakeGradient = ctx.createLinearGradient(0, horizonY, 0, height);
+      lakeGradient.addColorStop(0, '#2b1b36');
+      lakeGradient.addColorStop(0.15, '#3b2340');
+      lakeGradient.addColorStop(0.4, '#1e243b');
+      lakeGradient.addColorStop(1, '#090f1e');
+
+      ctx.fillStyle = lakeGradient;
+      ctx.fillRect(0, horizonY, width, height - horizonY);
+
+      // Water shimmers and reflections
+      const sunX = width * 0.65;
+      const shimmerGradient = ctx.createLinearGradient(0, horizonY, 0, height);
+      shimmerGradient.addColorStop(0, 'rgba(242, 160, 87, 0.45)');
+      shimmerGradient.addColorStop(0.3, 'rgba(217, 107, 67, 0.25)');
+      shimmerGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = shimmerGradient;
+
+      for (let y = horizonY; y < height; y += 3.5) {
+        const progress = (y - horizonY) / (height - horizonY);
+        const waveOffset = Math.sin(time * 0.05 + y * 0.1) * (2 + progress * 8);
+        const shimmerWidth = (30 + progress * width * 0.4) * (0.8 + Math.sin(time * 0.03 + y * 0.05) * 0.2);
+
+        ctx.fillRect(sunX - shimmerWidth / 2 + waveOffset, y, shimmerWidth, 1.6);
+      }
+    }
+
+    // Dynamic sway pinetree generator
+    function drawSwayingPineTree(x, y, treeWidth, treeHeight, color, swayFactor = 1) {
+      ctx.save();
+      
+      // Calculate dynamic sway angle based on wind speed and time
+      const windAngle = (Math.sin(time * 0.03 + x * 0.01) * 0.04 + (windX - 1) * 0.03) * swayFactor;
+
+      ctx.translate(x, y);
+      ctx.rotate(windAngle);
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, -treeHeight);
+
+      const layers = 5;
+      for (let i = 0; i < layers; i++) {
+        const stepProgress = i / layers;
+        const currentY = -treeHeight * (1 - stepProgress);
+        const currentWidth = treeWidth * (stepProgress + 0.2);
+
+        // Slight sway variation on branches
+        const branchSway = Math.sin(time * 0.05 + i) * 1.5 * swayFactor;
+
+        ctx.lineTo(currentWidth / 2 + branchSway, currentY + treeHeight / layers);
+        ctx.lineTo(currentWidth / 4 + branchSway * 0.5, currentY + treeHeight / layers);
+      }
+
+      ctx.lineTo(treeWidth / 2, 0);
+      ctx.lineTo(-treeWidth / 2, 0);
+
+      for (let i = layers - 1; i >= 0; i--) {
+        const stepProgress = i / layers;
+        const currentY = -treeHeight * (1 - stepProgress);
+        const currentWidth = treeWidth * (stepProgress + 0.2);
+
+        const branchSway = Math.sin(time * 0.05 + i) * 1.5 * swayFactor;
+
+        ctx.lineTo(-currentWidth / 4 + branchSway * 0.5, currentY + treeHeight / layers);
+        ctx.lineTo(-currentWidth / 2 + branchSway, currentY + treeHeight / layers);
+      }
+
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawForestRow(yBase, treeCount, minScale, maxScale, color, swayFactor = 0.5) {
+      for (let i = 0; i < treeCount; i++) {
+        const x = (i / treeCount) * width + (noise(i * 10) - 0.5) * (width / treeCount);
+        const scale = minScale + (noise(i * 5) * 0.5 + 0.5) * (maxScale - minScale);
+        const treeWidth = 18 * scale;
+        const treeHeight = 55 * scale;
+        const yOffset = noise(x * 0.01) * 12;
+
+        drawSwayingPineTree(x, yBase + yOffset, treeWidth, treeHeight, color, swayFactor * scale);
+      }
+    }
+
+    function animate() {
+      time += 1;
+
+      // Smoothly interpolate wind speed
+      windX += (targetWindX - windX) * 0.05;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Sky & Atmosphere
+      drawSky();
+
+      // 2. Animated Birds in the distance
+      birds.forEach(bird => {
+        bird.update();
+        bird.draw();
+      });
+
+      // 3. Mountains - Far (Layer 1)
+      drawMountainRange(height * 0.45, height * 0.18, 0.0012, [
+        { offset: 0, color: 'rgba(92, 60, 90, 0.9)' },
+        { offset: 0.6, color: 'rgba(60, 42, 68, 0.95)' },
+        { offset: 1, color: '#3d2542' }
+      ], 3);
+
+      // 4. Mountains - Mid (Layer 2)
+      drawMountainRange(height * 0.52, height * 0.14, 0.002, [
+        { offset: 0, color: '#4a2c47' },
+        { offset: 0.5, color: '#2d1c33' },
+        { offset: 1, color: '#1a1224' }
+      ], 4);
+
+      // 5. Front Mountains
+      drawMountainRange(height * 0.58, height * 0.1, 0.0035, [
+        { offset: 0, color: '#25172b' },
+        { offset: 1, color: '#110b17' }
+      ], 5);
+
+      // 6. Background Forest Row (Distant sway)
+      drawForestRow(height * 0.63, Math.floor(width / 8), 0.3, 0.6, '#140c1a', 0.3);
+
+      // 7. Lake & Water Reflections
+      const horizonY = height * 0.64;
+      drawLake(horizonY);
+
+      // 8. Wind Particles floating over landscape
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+
+      // 9. Foreground Shoreline
+      ctx.fillStyle = '#0a060d';
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+      ctx.lineTo(0, height * 0.88);
+      ctx.quadraticCurveTo(width * 0.3, height * 0.82, width * 0.6, height * 0.89);
+      ctx.quadraticCurveTo(width * 0.85, height * 0.93, width, height * 0.84);
+      ctx.lineTo(width, height);
+      ctx.closePath();
+      ctx.fill();
+
+      // 10. Foreground Trees (Swaying distinctly with wind)
+      drawForestRow(height * 0.92, Math.floor(width / 22), 0.9, 1.6, '#08040a', 1.2);
+
+      requestAnimationFrame(animate);
+    }
+
+    // Initialize layout and start animation on load
+    window.onload = function() {
+      resize();
+      animate();
+    };
+  </script>
 </body>
 </html>
