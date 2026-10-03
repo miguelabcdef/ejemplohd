@@ -3,219 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Selva Tropical Lluviosa - Pantalla Completa</title>
+    <title>Túnel Espacial 3D - Campo de Estrellas</title>
+    <!-- Tailwind CSS para la interfaz gráfica -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js para renderizado 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        * {
+        /* Estilos base y personalización de fuentes */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap');
+
+        body, html {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        html, body {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #050b07;
+            background-color: #020208;
+            font-family: 'Inter', sans-serif;
             user-select: none;
-            -webkit-user-select: none;
         }
 
-        /* Full screen clean background image */
-        .jungle-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Efecto de resplandor para textos e interfaz neón */
+        .glow-text {
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6), 0 0 20px rgba(56, 189, 248, 0.4);
+        }
+
+        .glass-panel {
+            background: rgba(10, 15, 30, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Personalización de sliders */
+        input[type=range] {
+            accent-color: #38bdf8;
+        }
+
+        canvas {
+            display: block;
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            object-position: center;
-            filter: brightness(0.92) contrast(1.05);
-            transition: transform 0.15s ease-out;
-            will-change: transform;
-        }
-
-        /* Canvas overlay for seamless rain particle effect */
-        #rainCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        /* Subtle ambient lighting layer */
-        .ambient-layer {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at center, transparent 40%, rgba(0, 15, 5, 0.45) 100%);
-            pointer-events: none;
-            z-index: 5;
         }
     </style>
 </head>
-<body class="relative w-screen h-screen overflow-hidden cursor-pointer" id="appBody" title="Haz clic en cualquier parte para activar/pausar el sonido de lluvia">
+<body class="text-white relative">
 
-    <!-- Fullscreen Clean Jungle Image -->
-    <img 
-        id="jungleImg" 
-        src="watermarked_img_10813751734266691943.jpg" 
-        alt="Selva Densa Lluviosa" 
-        class="jungle-bg transform scale-105"
-        onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=2000&q=80';"
-    >
-
-    <!-- Subtle Ambient Vignette -->
-    <div class="ambient-layer"></div>
-
-    <!-- Animated Rain Layer -->
-    <canvas id="rainCanvas"></canvas>
+    <!-- Canvas Principal de Three.js sin elementos sobrepuestos -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
 
     <script>
-        const canvas = document.getElementById('rainCanvas');
-        const ctx = canvas.getContext('2d');
-        const jungleImg = document.getElementById('jungleImg');
+        /* Variables Globales de la Escena 3D */
+        let scene, camera, renderer;
+        let starGeo, starMaterial, starPoints;
+        let starPositions, starVelocities, starColors;
+        
+        // Parámetros de configuración iniciales
+        const STAR_COUNT = 8000;
+        const speed = 2.5;
+        
+        // Movimiento suave de la cámara con interacción
+        let mouseX = 0, mouseY = 0;
+        let targetCamX = 0, targetCamY = 0;
 
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
+        // Paleta de colores espacial suave
+        const colorsList = [
+            new THREE.Color(0x38bdf8), // Cian brillante
+            new THREE.Color(0x818cf8), // Índigo
+            new THREE.Color(0xc084fc), // Púrpura suave
+            new THREE.Color(0xffffff)  // Blanco
+        ];
 
-        let raindrops = [];
-        const rainCount = 650; // Dense, natural rainforest rain count
+        function init() {
+            const container = document.getElementById('canvas-container');
 
-        class Raindrop {
-            constructor() {
-                this.reset();
+            // 1. Crear Escena 3D
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020208, 0.0008);
+
+            // 2. Crear Cámara Perspectiva
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.z = 0;
+
+            // 3. Crear Renderizador WebGL
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(scene.fog.color);
+            container.appendChild(renderer.domElement);
+
+            // 4. Generar el campo de estrellas
+            createStarfield();
+
+            // 5. Configurar eventos de interacción
+            setupEvents();
+
+            // 6. Arrancar ciclo de animación
+            animate();
+        }
+
+        function createStarfield() {
+            starGeo = new THREE.BufferGeometry();
+            starPositions = new Float32Array(STAR_COUNT * 3);
+            starVelocities = new Float32Array(STAR_COUNT);
+            starColors = new Float32Array(STAR_COUNT * 3);
+
+            for (let i = 0; i < STAR_COUNT; i++) {
+                const i3 = i * 3;
+
+                // Distribuir estrellas en un túnel/cilindro a lo largo del eje Z
+                const radius = 5 + Math.random() * 450;
+                const angle = Math.random() * Math.PI * 2;
+
+                starPositions[i3] = Math.cos(angle) * radius;     // X
+                starPositions[i3 + 1] = Math.sin(angle) * radius; // Y
+                starPositions[i3 + 2] = -Math.random() * 1600;    // Z
+
+                starVelocities[i] = 1.0 + Math.random() * 0.5;
+
+                // Asignar color aleatorio
+                const randomColor = colorsList[Math.floor(Math.random() * colorsList.length)];
+                starColors[i3] = randomColor.r;
+                starColors[i3 + 1] = randomColor.g;
+                starColors[i3 + 2] = randomColor.b;
             }
 
-            reset() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * -height;
-                this.length = Math.random() * 22 + 12;
-                this.speed = Math.random() * 11 + 14;
-                this.opacity = Math.random() * 0.45 + 0.15;
-                this.width = Math.random() * 1.6 + 0.6;
-            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
 
-            update() {
-                this.y += this.speed;
-                this.x += 0.6; // Slight wind angle
+            // Textura suave para cada estrella generada mediante un canvas en memoria
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(16, 16, 16, 0, Math.PI * 2);
+            ctx.fill();
 
-                if (this.y > height) {
-                    this.reset();
-                    this.y = 0;
+            const starTexture = new THREE.CanvasTexture(canvas);
+
+            starMaterial = new THREE.PointsMaterial({
+                size: 3.5,
+                map: starTexture,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                vertexColors: true
+            });
+
+            starPoints = new THREE.Points(starGeo, starMaterial);
+            scene.add(starPoints);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Movimiento suave de la cámara con el puntero
+            targetCamX += (mouseX * 45 - targetCamX) * 0.03;
+            targetCamY += (-mouseY * 45 - targetCamY) * 0.03;
+
+            camera.position.x = targetCamX;
+            camera.position.y = targetCamY;
+            camera.rotation.z = -targetCamX * 0.0008;
+
+            const positions = starGeo.attributes.position.array;
+
+            // Mover estrellas hacia la cámara (simulando avance)
+            for (let i = 0; i < STAR_COUNT; i++) {
+                const i3 = i * 3;
+
+                positions[i3 + 2] += (starVelocities[i] * speed * 2.5);
+
+                // Reiniciar estrella al fondo cuando rebasa a la cámara
+                if (positions[i3 + 2] > 50) {
+                    positions[i3 + 2] = -1600;
+                    
+                    const radius = 5 + Math.random() * 450;
+                    const angle = Math.random() * Math.PI * 2;
+                    positions[i3] = Math.cos(angle) * radius;
+                    positions[i3 + 1] = Math.sin(angle) * radius;
                 }
             }
 
-            draw() {
-                ctx.beginPath();
-                ctx.strokeStyle = `rgba(180, 225, 205, ${this.opacity})`;
-                ctx.lineWidth = this.width;
-                ctx.moveTo(this.x, this.y);
-                ctx.lineTo(this.x + 0.6, this.y + this.length);
-                ctx.stroke();
-            }
+            starGeo.attributes.position.needsUpdate = true;
+            renderer.render(scene, camera);
         }
 
-        function initRain() {
-            raindrops = [];
-            for (let i = 0; i < rainCount; i++) {
-                raindrops.push(new Raindrop());
-            }
+        function setupEvents() {
+            window.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+            });
+
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    mouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                    mouseY = (e.touches[0].clientY / window.innerHeight) * 2 - 1;
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
         }
 
-        function animateRain() {
-            ctx.clearRect(0, 0, width, height);
-            for (let i = 0; i < raindrops.length; i++) {
-                raindrops[i].update();
-                raindrops[i].draw();
-            }
-            requestAnimationFrame(animateRain);
-        }
-
-        window.addEventListener('resize', () => {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            initRain();
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            const moveX = (e.clientX - window.innerWidth / 2) * 0.008;
-            const moveY = (e.clientY - window.innerHeight / 2) * 0.008;
-            jungleImg.style.transform = `scale(1.05) translate(${moveX}px, ${moveY}px)`;
-        });
-
-        let audioCtx = null;
-        let isPlaying = false;
-        let noiseNode = null;
-        let gainNode = null;
-
-        function createRainAudio() {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContext();
-
-            // Pink noise generation for natural ambient rainforest rain
-            const bufferSize = audioCtx.sampleRate * 2;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const output = buffer.getChannelData(0);
-
-            let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                b0 = 0.99886 * b0 + white * 0.0555179;
-                b1 = 0.99332 * b1 + white * 0.0750759;
-                b2 = 0.96900 * b2 + white * 0.1538520;
-                b3 = 0.86650 * b3 + white * 0.3104856;
-                b4 = 0.55000 * b4 + white * 0.5329522;
-                b5 = -0.7616 * b5 - white * 0.0168980;
-                output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-                output[i] *= 0.11;
-                b6 = white * 0.115926;
-            }
-
-            noiseNode = audioCtx.createBufferSource();
-            noiseNode.buffer = buffer;
-            noiseNode.loop = true;
-
-            // Low-pass filter for rainforest canopy muffling
-            const filterNode = audioCtx.createBiquadFilter();
-            filterNode.type = 'lowpass';
-            filterNode.frequency.setValueAtTime(1100, audioCtx.currentTime);
-
-            // Master Volume
-            gainNode = audioCtx.createGain();
-            gainNode.gain.setValueAtTime(0.65, audioCtx.currentTime);
-
-            noiseNode.connect(filterNode);
-            filterNode.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            noiseNode.start();
-        }
-
-        // Toggle ambient sound on screen click
-        document.getElementById('appBody').addEventListener('click', () => {
-            if (!audioCtx) {
-                createRainAudio();
-            }
-
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-
-            if (!isPlaying) {
-                isPlaying = true;
-            } else {
-                isPlaying = false;
-                audioCtx.suspend();
-            }
-        });
-
-        window.onload = function() {
-            initRain();
-            animateRain();
-        };
+        window.onload = init;
     </script>
 </body>
 </html>
