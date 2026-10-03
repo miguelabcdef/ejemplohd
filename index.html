@@ -1,451 +1,221 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paisaje Realista Animado en Canvas HTML5</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body, html {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: #050a14;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-    /* Controls hint overlay */
-    .overlay-hint {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 13px;
-      pointer-events: none;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 8px 14px;
-      border-radius: 20px;
-      backdrop-filter: blur(4px);
-      user-select: none;
-      transition: opacity 0.5s ease;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selva Tropical Lluviosa - Pantalla Completa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050b07;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Full screen clean background image */
+        .jungle-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            filter: brightness(0.92) contrast(1.05);
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+        }
+
+        /* Canvas overlay for seamless rain particle effect */
+        #rainCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Subtle ambient lighting layer */
+        .ambient-layer {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 40%, rgba(0, 15, 5, 0.45) 100%);
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
 </head>
-<body>
+<body class="relative w-screen h-screen overflow-hidden cursor-pointer" id="appBody" title="Haz clic en cualquier parte para activar/pausar el sonido de lluvia">
 
-  <div class="overlay-hint">Mueve el cursor para alterar la brisa del viento</div>
-  <canvas id="landscapeCanvas"></canvas>
+    <!-- Fullscreen Clean Jungle Image -->
+    <img 
+        id="jungleImg" 
+        src="watermarked_img_10813751734266691943.jpg" 
+        alt="Selva Densa Lluviosa" 
+        class="jungle-bg transform scale-105"
+        onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=2000&q=80';"
+    >
 
-  <script>
-    const canvas = document.getElementById('landscapeCanvas');
-    const ctx = canvas.getContext('2d');
+    <!-- Subtle Ambient Vignette -->
+    <div class="ambient-layer"></div>
 
-    let width, height;
-    let time = 0;
-    let mouseX = 0;
-    let mouseY = 0;
-    let targetWindX = 1;
-    let windX = 1;
+    <!-- Animated Rain Layer -->
+    <canvas id="rainCanvas"></canvas>
 
-    // Track mouse movement to affect wind speed
-    window.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      const normX = (e.clientX / width) - 0.5;
-      targetWindX = 1 + normX * 2.5;
-    });
+    <script>
+        const canvas = document.getElementById('rainCanvas');
+        const ctx = canvas.getContext('2d');
+        const jungleImg = document.getElementById('jungleImg');
 
-    function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-      initBirds();
-      initParticles();
-    }
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
 
-    // Perlin-like noise generator
-    function noise(x) {
-      return Math.sin(x) * 0.5 + Math.sin(x * 2.3) * 0.25 + Math.sin(x * 5.7) * 0.125;
-    }
+        let raindrops = [];
+        const rainCount = 650; // Dense, natural rainforest rain count
 
-    // --- BIRD SIMULATION ---
-    const BIRDS_COUNT = 14;
-    let birds = [];
+        class Raindrop {
+            constructor() {
+                this.reset();
+            }
 
-    class Bird {
-      constructor() {
-        this.reset(true);
-      }
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * -height;
+                this.length = Math.random() * 22 + 12;
+                this.speed = Math.random() * 11 + 14;
+                this.opacity = Math.random() * 0.45 + 0.15;
+                this.width = Math.random() * 1.6 + 0.6;
+            }
 
-      reset(randomX = false) {
-        this.x = randomX ? Math.random() * width : -30 - Math.random() * 100;
-        this.y = height * (0.12 + Math.random() * 0.28);
-        this.size = 0.6 + Math.random() * 0.7;
-        this.speedX = (1.2 + Math.random() * 0.9) * this.size;
-        this.speedY = (Math.random() - 0.5) * 0.3;
-        this.wingSpeed = 0.08 + Math.random() * 0.04;
-        this.wingPhase = Math.random() * Math.PI * 2;
-        this.color = `rgba(${15 + Math.floor(Math.random() * 20)}, ${10 + Math.floor(Math.random() * 15)}, ${25 + Math.floor(Math.random() * 20)}, ${0.85 + Math.random() * 0.15})`;
-      }
+            update() {
+                this.y += this.speed;
+                this.x += 0.6; // Slight wind angle
 
-      update() {
-        this.x += this.speedX * (0.8 + windX * 0.3);
-        this.y += this.speedY + Math.sin(time * 0.02 + this.wingPhase) * 0.25;
-        this.wingPhase += this.wingSpeed * (0.8 + windX * 0.2);
+                if (this.y > height) {
+                    this.reset();
+                    this.y = 0;
+                }
+            }
 
-        // Reset if off-screen
-        if (this.x > width + 50) {
-          this.reset(false);
-        }
-      }
-
-      draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-
-        // Flapping motion calculation
-        const wingAngle = Math.sin(this.wingPhase) * 0.75;
-        const wingSpan = 18 * this.size;
-        const bodyLen = 12 * this.size;
-
-        ctx.fillStyle = this.color;
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1.8 * this.size;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // Draw bird silhouette (v-shape flapping wings)
-        ctx.beginPath();
-        // Left wing tip to center
-        const leftWingY = -wingAngle * wingSpan * 0.5;
-        const rightWingY = -wingAngle * wingSpan * 0.5;
-
-        ctx.moveTo(-wingSpan, leftWingY);
-        ctx.quadraticCurveTo(-wingSpan * 0.4, leftWingY * 0.3 - 2, 0, 0);
-        ctx.quadraticCurveTo(wingSpan * 0.4, rightWingY * 0.3 - 2, wingSpan, rightWingY);
-        ctx.stroke();
-
-        // Small bird body center accent
-        ctx.beginPath();
-        ctx.ellipse(0, 0, bodyLen * 0.3, bodyLen * 0.15, 0.1, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      }
-    }
-
-    function initBirds() {
-      birds = [];
-      for (let i = 0; i < BIRDS_COUNT; i++) {
-        birds.push(new Bird());
-      }
-    }
-
-    // --- PARTICLES SIMULATION ---
-    const PARTICLES_COUNT = 65;
-    let particles = [];
-
-    class Particle {
-      constructor() {
-        this.reset(true);
-      }
-
-      reset(randomY = false) {
-        this.x = Math.random() * width;
-        this.y = randomY ? Math.random() * height : -10;
-        this.size = 1 + Math.random() * 2.5;
-        this.vx = (0.5 + Math.random() * 1.2);
-        this.vy = (0.2 + Math.random() * 0.6);
-        this.alpha = 0.2 + Math.random() * 0.6;
-        this.oscFreq = 0.01 + Math.random() * 0.03;
-        this.colorHue = Math.random() > 0.5 ? '255, 200, 140' : '255, 160, 100'; // Warm glowing pollen
-      }
-
-      update() {
-        this.x += this.vx * windX + Math.sin(time * this.oscFreq) * 0.5;
-        this.y += this.vy;
-
-        if (this.x > width + 20) this.x = -10;
-        if (this.x < -20) this.x = width + 10;
-        if (this.y > height + 10) this.reset(false);
-      }
-
-      draw() {
-        ctx.save();
-        ctx.fillStyle = `rgba(${this.colorHue}, ${this.alpha})`;
-        ctx.shadowColor = 'rgba(255, 180, 100, 0.5)';
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-
-    function initParticles() {
-      particles = [];
-      for (let i = 0; i < PARTICLES_COUNT; i++) {
-        particles.push(new Particle());
-      }
-    }
-
-    function drawSky() {
-      // Atmospheric gradient (Sunset)
-      const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.65);
-      skyGradient.addColorStop(0.0, '#0c1b33'); // Top night blue
-      skyGradient.addColorStop(0.3, '#2a3b5c'); // Twilight blue
-      skyGradient.addColorStop(0.6, '#6b3e56'); // Purple/Magenta
-      skyGradient.addColorStop(0.85, '#d96b43'); // Warm orange
-      skyGradient.addColorStop(1.0, '#f2a057'); // Horizon yellow
-
-      ctx.fillStyle = skyGradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // Sun glow
-      const sunX = width * 0.65;
-      const sunY = height * 0.48;
-      const sunRadius = Math.min(width, height) * 0.08;
-
-      const sunGlow = ctx.createRadialGradient(sunX, sunY, sunRadius * 0.2, sunX, sunY, sunRadius * 3.2);
-      sunGlow.addColorStop(0, 'rgba(255, 245, 220, 1)');
-      sunGlow.addColorStop(0.2, 'rgba(255, 180, 100, 0.8)');
-      sunGlow.addColorStop(0.5, 'rgba(235, 110, 60, 0.3)');
-      sunGlow.addColorStop(1, 'rgba(235, 110, 60, 0)');
-
-      ctx.fillStyle = sunGlow;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, sunRadius * 3.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cirrus clouds with subtle drift
-      drawClouds();
-    }
-
-    function drawClouds() {
-      ctx.save();
-      for (let i = 0; i < 7; i++) {
-        const cloudY = height * (0.1 + i * 0.06);
-        const drift = (time * 0.15 * (i + 1)) % width;
-        const cloudGradient = ctx.createLinearGradient(0, cloudY, width, cloudY);
-        cloudGradient.addColorStop(0, 'rgba(255, 180, 150, 0)');
-        cloudGradient.addColorStop(0.3, `rgba(250, 160, 140, ${0.15 + i * 0.02})`);
-        cloudGradient.addColorStop(0.7, `rgba(180, 100, 130, ${0.2 + i * 0.02})`);
-        cloudGradient.addColorStop(1, 'rgba(255, 180, 150, 0)');
-
-        ctx.fillStyle = cloudGradient;
-        ctx.beginPath();
-        ctx.moveTo(0, cloudY);
-
-        for (let x = 0; x <= width; x += 20) {
-          const dy = noise((x + drift) * 0.005 + i * 10) * 25 + Math.sin((x + drift) * 0.002) * 15;
-          ctx.lineTo(x, cloudY + dy);
+            draw() {
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(180, 225, 205, ${this.opacity})`;
+                ctx.lineWidth = this.width;
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + 0.6, this.y + this.length);
+                ctx.stroke();
+            }
         }
 
-        ctx.lineTo(width, cloudY + 40);
-        ctx.lineTo(0, cloudY + 40);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    function drawMountainRange(baselineY, amplitude, frequency, colorStops, octaves = 4) {
-      ctx.beginPath();
-      ctx.moveTo(0, height);
-
-      for (let x = 0; x <= width; x += 2) {
-        let y = baselineY;
-        let currAmp = amplitude;
-        let currFreq = frequency;
-
-        for (let o = 0; o < octaves; o++) {
-          y += noise(x * currFreq + o * 100) * currAmp;
-          currAmp *= 0.45;
-          currFreq *= 2.1;
+        function initRain() {
+            raindrops = [];
+            for (let i = 0; i < rainCount; i++) {
+                raindrops.push(new Raindrop());
+            }
         }
 
-        ctx.lineTo(x, y);
-      }
+        function animateRain() {
+            ctx.clearRect(0, 0, width, height);
+            for (let i = 0; i < raindrops.length; i++) {
+                raindrops[i].update();
+                raindrops[i].draw();
+            }
+            requestAnimationFrame(animateRain);
+        }
 
-      ctx.lineTo(width, height);
-      ctx.closePath();
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initRain();
+        });
 
-      const grad = ctx.createLinearGradient(0, baselineY - amplitude, 0, height);
-      colorStops.forEach(stop => grad.addColorStop(stop.offset, stop.color));
-      ctx.fillStyle = grad;
-      ctx.fill();
-    }
+        window.addEventListener('mousemove', (e) => {
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.008;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.008;
+            jungleImg.style.transform = `scale(1.05) translate(${moveX}px, ${moveY}px)`;
+        });
 
-    function drawLake(horizonY) {
-      // Reflective lake
-      const lakeGradient = ctx.createLinearGradient(0, horizonY, 0, height);
-      lakeGradient.addColorStop(0, '#2b1b36');
-      lakeGradient.addColorStop(0.15, '#3b2340');
-      lakeGradient.addColorStop(0.4, '#1e243b');
-      lakeGradient.addColorStop(1, '#090f1e');
+        let audioCtx = null;
+        let isPlaying = false;
+        let noiseNode = null;
+        let gainNode = null;
 
-      ctx.fillStyle = lakeGradient;
-      ctx.fillRect(0, horizonY, width, height - horizonY);
+        function createRainAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
 
-      // Water shimmers and reflections
-      const sunX = width * 0.65;
-      const shimmerGradient = ctx.createLinearGradient(0, horizonY, 0, height);
-      shimmerGradient.addColorStop(0, 'rgba(242, 160, 87, 0.45)');
-      shimmerGradient.addColorStop(0.3, 'rgba(217, 107, 67, 0.25)');
-      shimmerGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            // Pink noise generation for natural ambient rainforest rain
+            const bufferSize = audioCtx.sampleRate * 2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = buffer.getChannelData(0);
 
-      ctx.fillStyle = shimmerGradient;
+            let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+            for (let i = 0; i < bufferSize; i++) {
+                const white = Math.random() * 2 - 1;
+                b0 = 0.99886 * b0 + white * 0.0555179;
+                b1 = 0.99332 * b1 + white * 0.0750759;
+                b2 = 0.96900 * b2 + white * 0.1538520;
+                b3 = 0.86650 * b3 + white * 0.3104856;
+                b4 = 0.55000 * b4 + white * 0.5329522;
+                b5 = -0.7616 * b5 - white * 0.0168980;
+                output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                output[i] *= 0.11;
+                b6 = white * 0.115926;
+            }
 
-      for (let y = horizonY; y < height; y += 3.5) {
-        const progress = (y - horizonY) / (height - horizonY);
-        const waveOffset = Math.sin(time * 0.05 + y * 0.1) * (2 + progress * 8);
-        const shimmerWidth = (30 + progress * width * 0.4) * (0.8 + Math.sin(time * 0.03 + y * 0.05) * 0.2);
+            noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = buffer;
+            noiseNode.loop = true;
 
-        ctx.fillRect(sunX - shimmerWidth / 2 + waveOffset, y, shimmerWidth, 1.6);
-      }
-    }
+            // Low-pass filter for rainforest canopy muffling
+            const filterNode = audioCtx.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            filterNode.frequency.setValueAtTime(1100, audioCtx.currentTime);
 
-    // Dynamic sway pinetree generator
-    function drawSwayingPineTree(x, y, treeWidth, treeHeight, color, swayFactor = 1) {
-      ctx.save();
-      
-      // Calculate dynamic sway angle based on wind speed and time
-      const windAngle = (Math.sin(time * 0.03 + x * 0.01) * 0.04 + (windX - 1) * 0.03) * swayFactor;
+            // Master Volume
+            gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.65, audioCtx.currentTime);
 
-      ctx.translate(x, y);
-      ctx.rotate(windAngle);
+            noiseNode.connect(filterNode);
+            filterNode.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
 
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(0, -treeHeight);
+            noiseNode.start();
+        }
 
-      const layers = 5;
-      for (let i = 0; i < layers; i++) {
-        const stepProgress = i / layers;
-        const currentY = -treeHeight * (1 - stepProgress);
-        const currentWidth = treeWidth * (stepProgress + 0.2);
+        // Toggle ambient sound on screen click
+        document.getElementById('appBody').addEventListener('click', () => {
+            if (!audioCtx) {
+                createRainAudio();
+            }
 
-        // Slight sway variation on branches
-        const branchSway = Math.sin(time * 0.05 + i) * 1.5 * swayFactor;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
 
-        ctx.lineTo(currentWidth / 2 + branchSway, currentY + treeHeight / layers);
-        ctx.lineTo(currentWidth / 4 + branchSway * 0.5, currentY + treeHeight / layers);
-      }
+            if (!isPlaying) {
+                isPlaying = true;
+            } else {
+                isPlaying = false;
+                audioCtx.suspend();
+            }
+        });
 
-      ctx.lineTo(treeWidth / 2, 0);
-      ctx.lineTo(-treeWidth / 2, 0);
-
-      for (let i = layers - 1; i >= 0; i--) {
-        const stepProgress = i / layers;
-        const currentY = -treeHeight * (1 - stepProgress);
-        const currentWidth = treeWidth * (stepProgress + 0.2);
-
-        const branchSway = Math.sin(time * 0.05 + i) * 1.5 * swayFactor;
-
-        ctx.lineTo(-currentWidth / 4 + branchSway * 0.5, currentY + treeHeight / layers);
-        ctx.lineTo(-currentWidth / 2 + branchSway, currentY + treeHeight / layers);
-      }
-
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.restore();
-    }
-
-    function drawForestRow(yBase, treeCount, minScale, maxScale, color, swayFactor = 0.5) {
-      for (let i = 0; i < treeCount; i++) {
-        const x = (i / treeCount) * width + (noise(i * 10) - 0.5) * (width / treeCount);
-        const scale = minScale + (noise(i * 5) * 0.5 + 0.5) * (maxScale - minScale);
-        const treeWidth = 18 * scale;
-        const treeHeight = 55 * scale;
-        const yOffset = noise(x * 0.01) * 12;
-
-        drawSwayingPineTree(x, yBase + yOffset, treeWidth, treeHeight, color, swayFactor * scale);
-      }
-    }
-
-    function animate() {
-      time += 1;
-
-      // Smoothly interpolate wind speed
-      windX += (targetWindX - windX) * 0.05;
-
-      ctx.clearRect(0, 0, width, height);
-
-      // 1. Sky & Atmosphere
-      drawSky();
-
-      // 2. Animated Birds in the distance
-      birds.forEach(bird => {
-        bird.update();
-        bird.draw();
-      });
-
-      // 3. Mountains - Far (Layer 1)
-      drawMountainRange(height * 0.45, height * 0.18, 0.0012, [
-        { offset: 0, color: 'rgba(92, 60, 90, 0.9)' },
-        { offset: 0.6, color: 'rgba(60, 42, 68, 0.95)' },
-        { offset: 1, color: '#3d2542' }
-      ], 3);
-
-      // 4. Mountains - Mid (Layer 2)
-      drawMountainRange(height * 0.52, height * 0.14, 0.002, [
-        { offset: 0, color: '#4a2c47' },
-        { offset: 0.5, color: '#2d1c33' },
-        { offset: 1, color: '#1a1224' }
-      ], 4);
-
-      // 5. Front Mountains
-      drawMountainRange(height * 0.58, height * 0.1, 0.0035, [
-        { offset: 0, color: '#25172b' },
-        { offset: 1, color: '#110b17' }
-      ], 5);
-
-      // 6. Background Forest Row (Distant sway)
-      drawForestRow(height * 0.63, Math.floor(width / 8), 0.3, 0.6, '#140c1a', 0.3);
-
-      // 7. Lake & Water Reflections
-      const horizonY = height * 0.64;
-      drawLake(horizonY);
-
-      // 8. Wind Particles floating over landscape
-      particles.forEach(p => {
-        p.update();
-        p.draw();
-      });
-
-      // 9. Foreground Shoreline
-      ctx.fillStyle = '#0a060d';
-      ctx.beginPath();
-      ctx.moveTo(0, height);
-      ctx.lineTo(0, height * 0.88);
-      ctx.quadraticCurveTo(width * 0.3, height * 0.82, width * 0.6, height * 0.89);
-      ctx.quadraticCurveTo(width * 0.85, height * 0.93, width, height * 0.84);
-      ctx.lineTo(width, height);
-      ctx.closePath();
-      ctx.fill();
-
-      // 10. Foreground Trees (Swaying distinctly with wind)
-      drawForestRow(height * 0.92, Math.floor(width / 22), 0.9, 1.6, '#08040a', 1.2);
-
-      requestAnimationFrame(animate);
-    }
-
-    // Initialize layout and start animation on load
-    window.onload = function() {
-      resize();
-      animate();
-    };
-  </script>
+        window.onload = function() {
+            initRain();
+            animateRain();
+        };
+    </script>
 </body>
 </html>
