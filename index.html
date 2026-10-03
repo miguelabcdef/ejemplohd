@@ -3,189 +3,612 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mariposa Animada</title>
+    <title>Mariposa de Partículas 3D</title>
+    <!-- Tailwind CSS para el diseño de la interfaz -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js para renderizado de partículas en 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls para control intuitivo de cámara -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        * {
+        body {
+            font-family: 'Inter', sans-serif;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            perspective: 1000px;
+            background-color: #030008;
+            color: #ffffff;
+            user-select: none;
         }
-
-        /* Mensaje flotante */
-        .message {
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
             position: absolute;
-            bottom: 10%;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.5rem;
-            text-shadow: 0 0 10px rgba(0, 198, 255, 0.8);
-            letter-spacing: 2px;
-            animation: pulseText 3s infinite ease-in-out;
-            text-align: center;
-            padding: 0 20px;
-        }
-
-        @keyframes pulseText {
-            0%, 100% { opacity: 0.6; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.05); }
-        }
-
-        /* Contenedor principal de la mariposa */
-        .butterfly-container {
-            position: relative;
-            width: 100px;
-            height: 100px;
-            transform-style: preserve-3d;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        /* Vuelo flotante suave */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(-5deg); }
-            50% { transform: translateY(-30px) rotate(5deg); }
-        }
-
-        /* Estructura central */
-        .butterfly {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            transform-style: preserve-3d;
-            transform: rotateX(50deg) rotateY(0deg) rotateZ(-30deg);
-        }
-
-        /* Cuerpo de la mariposa */
-        .body {
-            position: absolute;
-            top: -25px;
-            left: -4px;
-            width: 8px;
-            height: 50px;
-            background: linear-gradient(to bottom, #111, #333, #111);
-            border-radius: 10px;
-            z-index: 10;
-            box-shadow: 0 0 10px rgba(0, 198, 255, 0.5);
-        }
-
-        /* Antenas */
-        .body::before, .body::after {
-            content: '';
-            position: absolute;
-            top: -12px;
-            width: 2px;
-            height: 16px;
-            background: #aaa;
-            border-radius: 50%;
-        }
-        .body::before { left: 1px; transform: rotate(-25deg); }
-        .body::after { right: 1px; transform: rotate(25deg); }
-
-        /* Alas */
-        .wing {
-            position: absolute;
-            top: -35px;
-            width: 80px;
-            height: 90px;
-            background: linear-gradient(135deg, #00c6ff, #0072ff, #7f00ff);
-            border-radius: 50% 50% 10% 40%;
-            box-shadow: 0 0 20px rgba(0, 198, 255, 0.8), inset 0 0 15px rgba(255, 255, 255, 0.5);
-            opacity: 0.9;
-        }
-
-        /* Ala Izquierda y animación de aleteo */
-        .wing-left {
-            right: 0;
-            transform-origin: right center;
-            animation: flapLeft 0.5s infinite ease-in-out alternate;
-        }
-
-        /* Ala Derecha y animación de aleteo */
-        .wing-right {
+            top: 0;
             left: 0;
-            transform-origin: left center;
-            border-radius: 50% 50% 40% 10%;
-            animation: flapRight 0.5s infinite ease-in-out alternate;
+            z-index: 1;
         }
-
-        @keyframes flapLeft {
-            0% { transform: rotateY(0deg); }
-            100% { transform: rotateY(70deg); }
+        /* Cristal visual para los paneles de UI */
+        .glass-panel {
+            background: rgba(18, 10, 32, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
         }
-
-        @keyframes flapRight {
-            0% { transform: rotateY(0deg); }
-            100% { transform: rotateY(-70deg); }
+        /* Animaciones suaves */
+        .glow-text {
+            text-shadow: 0 0 12px rgba(236, 72, 153, 0.8), 0 0 24px rgba(168, 85, 247, 0.5);
         }
-
-        /* Partículas / Polvo de Hadas de fondo */
-        .particle {
-            position: absolute;
-            background: rgba(0, 198, 255, 0.8);
-            border-radius: 50%;
-            pointer-events: none;
-            box-shadow: 0 0 8px #00c6ff;
-            animation: rise 5s linear infinite;
+        /* Custom Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
         }
-
-        @keyframes rise {
-            0% {
-                transform: translateY(100vh) scale(0);
-                opacity: 0;
-            }
-            50% {
-                opacity: 0.8;
-            }
-            100% {
-                transform: translateY(-10vh) scale(1.5);
-                opacity: 0;
-            }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(236, 72, 153, 0.5);
+            border-radius: 3px;
         }
     </style>
 </head>
-<body>
+<body class="bg-black text-white overflow-hidden select-none">
 
-    <div class="butterfly-container">
-        <div class="butterfly">
-            <div class="body"></div>
-            <div class="wing wing-left"></div>
-            <div class="wing wing-right"></div>
+    <!-- Contenedor principal de la Canvas -->
+    <div id="canvas-container" class="w-full h-full absolute inset-0"></div>
+
+    <!-- UI Overlay: Encabezado -->
+    <div class="absolute top-6 left-6 z-10 pointer-events-none">
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 glow-text drop-shadow">
+            NEBULA BUTTERFLY
+        </h1>
+        <p class="text-xs md:text-sm text-purple-200/70 font-light mt-1 flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-pink-500 animate-ping"></span>
+            Simulación de Partículas Quánticas & Visual 3D
+        </p>
+    </div>
+
+    <!-- UI Overlay: Panel de Control Interactivo -->
+    <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 w-11/12 max-w-md">
+        <div class="glass-panel p-4 md:p-5 rounded-2xl flex flex-col gap-3 transition-all duration-300 hover:border-pink-500/40">
+            <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                <span class="text-xs font-semibold tracking-wider text-pink-300 uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-cyan-400"></i> Controles Dinámicos
+                </span>
+                <button id="toggle-info-btn" class="text-xs text-gray-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-circle-info text-base"></i>
+                </button>
+            </div>
+
+            <!-- Control de Velocidad de Aleteo -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300">Velocidad de Aleteo</span>
+                    <span id="speed-val" class="text-pink-400 font-mono">1.2x</span>
+                </div>
+                <input type="range" id="flap-speed" min="0.1" max="3" step="0.1" value="1.2" 
+                    class="w-full h-1.5 bg-purple-950/80 rounded-lg appearance-none cursor-pointer accent-pink-500">
+            </div>
+
+            <!-- Control de Cantidad de Partículas -->
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                    <span class="text-gray-300">Densidad Estelar (Partículas)</span>
+                    <span id="count-val" class="text-cyan-400 font-mono">25,000</span>
+                </div>
+                <input type="range" id="particle-count" min="5000" max="40000" step="5000" value="25000" 
+                    class="w-full h-1.5 bg-purple-950/80 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            </div>
+
+            <!-- Paleta de Colores Dinámica -->
+            <div class="flex justify-between items-center pt-1">
+                <span class="text-xs text-gray-300">Paleta de Neón</span>
+                <div class="flex gap-2">
+                    <button data-theme="cosmic" class="theme-btn w-6 h-6 rounded-full bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-400 border-2 border-white ring-2 ring-pink-500/50 scale-110 transition-all"></button>
+                    <button data-theme="gold" class="theme-btn w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-yellow-300 border border-white/30 transition-all hover:scale-105"></button>
+                    <button data-theme="cyber" class="theme-btn w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-400 via-teal-500 to-blue-500 border border-white/30 transition-all hover:scale-105"></button>
+                    <button data-theme="fire" class="theme-btn w-6 h-6 rounded-full bg-gradient-to-tr from-red-500 via-orange-500 to-yellow-400 border border-white/30 transition-all hover:scale-105"></button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="message">✨ Algo hermoso para ti ✨</div>
+    <!-- Guía del usuario flotante -->
+    <div id="info-modal" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 w-11/12 max-w-sm">
+        <div class="glass-panel p-6 rounded-2xl relative text-sm space-y-3 border border-pink-500/30">
+            <button id="close-info-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="font-bold text-lg text-pink-300 flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Interacción 3D
+            </h3>
+            <ul class="space-y-2 text-gray-300 text-xs leading-relaxed">
+                <li class="flex items-center gap-2"><i class="fa-solid fa-hand-pointer text-cyan-400"></i> <strong>Rotar:</strong> Haz clic y arrastra con el mouse / touch.</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-magnifying-glass text-pink-400"></i> <strong>Zoom:</strong> Usa la rueda del mouse o gesto de pellizco.</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-sparkles text-amber-400"></i> <strong>Atracción:</strong> Mueve el cursor para interactuar con el polvo galáctico.</li>
+            </ul>
+        </div>
+    </div>
 
     <script>
-        // Generador de partículas de luz de fondo
-        function createParticles() {
-            const count = 30;
-            for (let i = 0; i < count; i++) {
-                const particle = document.createElement('div');
-                particle.classList.add('particle');
-                
-                const size = Math.random() * 4 + 2;
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-                particle.style.left = `${Math.random() * 100}vw`;
-                particle.style.animationDelay = `${Math.random() * 5}s`;
-                particle.style.animationDuration = `${Math.random() * 3 + 3}s`;
-                
-                document.body.appendChild(particle);
-            }
+        let scene, camera, renderer, controls;
+        let butterflyParticles, backgroundStars;
+        let butterflyGeometry, particleMaterial;
+
+        // Configuración por defecto
+        let particleCount = 25000;
+        let flapSpeed = 1.2;
+        let clock = new THREE.Clock();
+        
+        // Raycaster y Mouse para interactividad
+        const mouse = new THREE.Vector2(-999, -999);
+        const targetMouse = new THREE.Vector2(-999, -999);
+        const raycaster = new THREE.Raycaster();
+        let mouseWorldPos = new THREE.Vector3(0, 0, 0);
+
+        // Definición de paletas cromáticas avanzadas (RGB Normalizado)
+        const COLOR_THEMES = {
+            cosmic: [
+                new THREE.Color(0xff007f), // Magenta neón
+                new THREE.Color(0x9d4edd), // Violeta vibrante
+                new THREE.Color(0x00f0ff), // Cian eléctrico
+                new THREE.Color(0xffd700)  // Oro
+            ],
+            gold: [
+                new THREE.Color(0xffaa00), // Ámbar
+                new THREE.Color(0xff2266), // Rosa rubí
+                new THREE.Color(0xffe600), // Amarillo brillante
+                new THREE.Color(0xffffff)  // Blanco puro
+            ],
+            cyber: [
+                new THREE.Color(0x00ffcc), // Turquesa
+                new THREE.Color(0x0066ff), // Azul eléctrico
+                new THREE.Color(0x39ff14), // Verde Neón
+                new THREE.Color(0x9900ff)  // Púrpura
+            ],
+            fire: [
+                new THREE.Color(0xff0000), // Rojo intenso
+                new THREE.Color(0xff6600), // Naranja neón
+                new THREE.Color(0xffcc00), // Amarillo fuego
+                new THREE.Color(0xff0055)  // Rosa intenso
+            ]
+        };
+        let currentTheme = COLOR_THEMES.cosmic;
+
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            // Gradiente radial para suavidad perfecta sin bordes duros
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
         }
 
-        createParticles();
+        // Basado en modificaciones elegantes de las curvas polares de mariposas (Temple H. Fay)
+        function generateButterflyPositionsAndAttributes(count) {
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            const originalPositions = new Float32Array(count * 3);
+            const sizes = new Float32Array(count);
+            const wingSide = new Float32Array(count); // -1 para ala izquierda, 1 para derecha, 0 para cuerpo
+            const phases = new Float32Array(count); // Desfase aleatorio para vibración
+
+            const sparkTexture = createGlowTexture();
+
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                
+                // Distribuimos una parte para el cuerpo/antenas y la mayoría para las alas
+                const isBody = Math.random() < 0.08;
+
+                if (isBody) {
+                    // Generación del cuerpo central y antenas
+                    const t = (Math.random() - 0.5) * 4; // Longitud del cuerpo
+                    const radius = (1 - Math.abs(t) / 2.5) * 0.15;
+                    const angle = Math.random() * Math.PI * 2;
+
+                    let x = Math.cos(angle) * radius;
+                    let y = t;
+                    let z = Math.sin(angle) * radius;
+
+                    // Antenas curiosas
+                    if (Math.random() < 0.25 && t > 1.2) {
+                        const antennaT = Math.random();
+                        const side = Math.random() > 0.5 ? 1 : -1;
+                        x = side * (antennaT * 0.8);
+                        y = 1.8 + Math.pow(antennaT, 1.5) * 1.2;
+                        z = antennaT * 0.4;
+                    }
+
+                    positions[i3] = x;
+                    positions[i3 + 1] = y;
+                    positions[i3 + 2] = z;
+
+                    wingSide[i] = 0; // Cuerpo
+                    sizes[i] = Math.random() * 0.12 + 0.05;
+                } else {
+                    // Generación de Alas mediante Ecuaciones Paramétricas Complejas
+                    // t controla la curva a lo largo de las alas
+                    const u = Math.random() * Math.PI * 2;
+                    const v = Math.random(); // Densidad radial
+
+                    // Ecuación matemática de curva de mariposa modificada en 3D
+                    // r(u) = e^(cos(u)) - 2*cos(4u) + sin^5(u/12)
+                    const r = Math.exp(Math.cos(u)) - 2.0 * Math.cos(4.0 * u) + Math.pow(Math.sin(u / 12.0), 5.0);
+
+                    // Escalado estético
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    const spread = Math.pow(v, 0.7); // Mayor concentración en bordes para definición
+
+                    let x = side * Math.sin(u) * r * spread * 0.8;
+                    let y = Math.cos(u) * r * spread * 0.8;
+                    let z = (Math.random() - 0.5) * 0.2 * spread; // Ligero grosor 3D
+
+                    // Curvatura elegante del ala
+                    z += Math.sin(x * 0.8) * 0.3;
+
+                    positions[i3] = x;
+                    positions[i3 + 1] = y;
+                    positions[i3 + 2] = z;
+
+                    wingSide[i] = side;
+                    sizes[i] = Math.random() * 0.18 + 0.04;
+                }
+
+                // Guardar copias de posiciones iniciales para cálculos dinámicos
+                originalPositions[i3] = positions[i3];
+                originalPositions[i3 + 1] = positions[i3 + 1];
+                originalPositions[i3 + 2] = positions[i3 + 2];
+
+                phases[i] = Math.random() * Math.PI * 2;
+
+                // Asignación cromática basada en posición y tema actual
+                const color = getParticleColor(positions[i3], positions[i3 + 1], wingSide[i]);
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+
+            return { positions, originalPositions, colors, sizes, wingSide, phases };
+        }
+
+        function getParticleColor(x, y, side) {
+            const dist = Math.sqrt(x * x + y * y);
+            
+            // Selección del color dentro del tema seleccionado
+            let c1, c2;
+            let factor = Math.min(dist / 3.5, 1.0);
+
+            if (side === 0) {
+                // El cuerpo usa tono más luminoso
+                return currentTheme[3].clone().lerp(new THREE.Color(0xffffff), 0.5);
+            }
+
+            if (factor < 0.4) {
+                c1 = currentTheme[0]; // Centro (Magenta)
+                c2 = currentTheme[1]; // Intermedio (Violeta)
+                factor = factor / 0.4;
+            } else {
+                c1 = currentTheme[1]; 
+                c2 = currentTheme[2]; // Borde externo (Cian/Azul)
+                factor = (factor - 0.4) / 0.6;
+            }
+
+            const finalColor = c1.clone().lerp(c2, factor);
+            
+            // Agregar toques dorados aleatorios en las puntas
+            if (dist > 2.5 && Math.random() < 0.2) {
+                finalColor.lerp(currentTheme[3], 0.7);
+            }
+
+            return finalColor;
+        }
+
+        function createGalacticBackground() {
+            const count = 3000;
+            const bgGeometry = new THREE.BufferGeometry();
+            const bgPositions = new Float32Array(count * 3);
+            const bgColors = new Float32Array(count * 3);
+
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                // Posicionar estrellas en una esfera gigante
+                const radius = 30 + Math.random() * 50;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+
+                bgPositions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                bgPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                bgPositions[i3 + 2] = radius * Math.cos(phi);
+
+                // Colores tenues cósmicos
+                const c = currentTheme[Math.floor(Math.random() * currentTheme.length)];
+                bgColors[i3] = c.r * 0.6;
+                bgColors[i3 + 1] = c.g * 0.6;
+                bgColors[i3 + 2] = c.b * 0.6;
+            }
+
+            bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+            bgGeometry.setAttribute('color', new THREE.BufferAttribute(bgColors, 3));
+
+            const bgMaterial = new THREE.PointsMaterial({
+                size: 0.25,
+                vertexColors: true,
+                map: createGlowTexture(),
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            backgroundStars = new THREE.Points(bgGeometry, bgMaterial);
+            scene.add(backgroundStars);
+        }
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // Escena
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x030008, 0.015);
+
+            // Cámara
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 7);
+
+            // Renderizador
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            container.appendChild(renderer.domElement);
+
+            // Orbit Controls para rotar libremente
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 20;
+            controls.minDistance = 2;
+
+            // Construir mariposa de partículas
+            buildButterfly();
+
+            // Construir fondo estelar
+            createGalacticBackground();
+
+            // Event Listeners para interacción
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('pointermove', onPointerMove);
+
+            // UI Listeners
+            setupUIControls();
+        }
+
+        function buildButterfly() {
+            if (butterflyParticles) {
+                scene.remove(butterflyParticles);
+                butterflyGeometry.dispose();
+            }
+
+            const data = generateButterflyPositionsAndAttributes(particleCount);
+
+            butterflyGeometry = new THREE.BufferGeometry();
+            butterflyGeometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+            butterflyGeometry.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
+            butterflyGeometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
+
+            // Guardar datos personalizados en userData para animación
+            butterflyGeometry.userData = {
+                originalPositions: data.originalPositions,
+                wingSide: data.wingSide,
+                phases: data.phases
+            };
+
+            // Material de puntos resplandecientes con Blender Aditivo
+            particleMaterial = new THREE.PointsMaterial({
+                size: 0.12,
+                vertexColors: true,
+                map: createGlowTexture(),
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            butterflyParticles = new THREE.Points(butterflyGeometry, particleMaterial);
+            scene.add(butterflyParticles);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onPointerMove(event) {
+            // Posición normalizada de ratón (-1 a +1)
+            targetMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            targetMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        function setupUIControls() {
+            // Slider Velocidad
+            const flapInput = document.getElementById('flap-speed');
+            const speedVal = document.getElementById('speed-val');
+            flapInput.addEventListener('input', (e) => {
+                flapSpeed = parseFloat(e.target.value);
+                speedVal.textContent = `${flapSpeed.toFixed(1)}x`;
+            });
+
+            // Slider Cantidad de Partículas
+            const countInput = document.getElementById('particle-count');
+            const countVal = document.getElementById('count-val');
+            countInput.addEventListener('change', (e) => {
+                particleCount = parseInt(e.target.value);
+                countVal.textContent = particleCount.toLocaleString();
+                buildButterfly();
+            });
+
+            // Cambiar Temas de Color
+            const themeBtns = document.querySelectorAll('.theme-btn');
+            themeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    themeBtns.forEach(b => b.classList.remove('scale-110', 'ring-2', 'ring-pink-500/50'));
+                    btn.classList.add('scale-110', 'ring-2', 'ring-pink-500/50');
+
+                    const themeKey = btn.getAttribute('data-theme');
+                    currentTheme = COLOR_THEMES[themeKey];
+                    
+                    // Actualizar colores del sistema activo
+                    updateColors();
+                });
+            });
+
+            // Modal de información
+            const modal = document.getElementById('info-modal');
+            document.getElementById('toggle-info-btn').addEventListener('click', () => {
+                modal.classList.toggle('hidden');
+            });
+            document.getElementById('close-info-btn').addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        }
+
+        function updateColors() {
+            if (!butterflyGeometry) return;
+
+            const colors = butterflyGeometry.attributes.color.array;
+            const positions = butterflyGeometry.attributes.position.array;
+            const wingSide = butterflyGeometry.userData.wingSide;
+
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                const color = getParticleColor(positions[i3], positions[i3 + 1], wingSide[i]);
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+            butterflyGeometry.attributes.color.needsUpdate = true;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+            const delta = clock.getDelta();
+
+            // Suavizar movimiento del ratón
+            mouse.x += (targetMouse.x - mouse.x) * 0.05;
+            mouse.y += (targetMouse.y - mouse.y) * 0.05;
+
+            // Calcular intersección del ratón en el espacio 3D (plano z=0)
+            raycaster.setFromCamera(mouse, camera);
+            const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+            raycaster.ray.intersectPlane(planeZ, mouseWorldPos);
+
+            // Bucle de física de partículas
+            if (butterflyGeometry) {
+                const positions = butterflyGeometry.attributes.position.array;
+                const orig = butterflyGeometry.userData.originalPositions;
+                const wingSide = butterflyGeometry.userData.wingSide;
+                const phases = butterflyGeometry.userData.phases;
+
+                // Ángulo de aleteo suave con armónicos
+                const flapAngle = Math.sin(elapsedTime * 3.5 * flapSpeed) * 0.85;
+
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    const side = wingSide[i];
+
+                    let x = orig[i3];
+                    let y = orig[i3 + 1];
+                    let z = orig[i3 + 2];
+
+                    if (side !== 0) {
+                        // Aleteo de las alas mediante rotación sobre el eje Y corporal
+                        // Cuanto más alejada del cuerpo (X mayor), mayor es el arco del aleteo
+                        const distFromCenter = Math.abs(x);
+                        const angle = flapAngle * (distFromCenter * 0.45);
+
+                        // Matriz de rotación en Z/Y para aleteo natural e inmersivo
+                        const cosA = Math.cos(angle);
+                        const sinA = Math.sin(angle);
+
+                        // Rotar componentes X y Z respecto al eje central
+                        const rotX = x * cosA - z * sinA;
+                        const rotZ = x * sinA + z * cosA;
+
+                        x = rotX;
+                        z = rotZ + Math.sin(elapsedTime * 2.0 + phases[i]) * 0.05; // Ondulación adicional
+                    } else {
+                        // Micro-vibración orgánica en el cuerpo
+                        x += Math.sin(elapsedTime * 10 + phases[i]) * 0.01;
+                    }
+
+                    // Interacción magnética con el ratón
+                    if (mouseWorldPos) {
+                        const dx = x - mouseWorldPos.x;
+                        const dy = y - mouseWorldPos.y;
+                        const dz = z - mouseWorldPos.z;
+                        const distSq = dx * dx + dy * dy + dz * dz;
+
+                        // Efecto de repulsión suave si el cursor está cerca
+                        if (distSq < 4.0 && distSq > 0.01) {
+                            const force = (1.0 - distSq / 4.0) * 0.4;
+                            x += (dx / Math.sqrt(distSq)) * force;
+                            y += (dy / Math.sqrt(distSq)) * force;
+                            z += (dz / Math.sqrt(distSq)) * force;
+                        }
+                    }
+
+                    positions[i3] = x;
+                    positions[i3 + 1] = y;
+                    positions[i3 + 2] = z;
+                }
+
+                butterflyGeometry.attributes.position.needsUpdate = true;
+
+                // Suave balanceo y flotación general de la mariposa en el espacio
+                butterflyParticles.position.y = Math.sin(elapsedTime * 1.5) * 0.2;
+                butterflyParticles.position.x = Math.cos(elapsedTime * 0.8) * 0.15;
+                butterflyParticles.rotation.y = Math.sin(elapsedTime * 0.5) * 0.15;
+            }
+
+            // Rotación suave de las estrellas de fondo
+            if (backgroundStars) {
+                backgroundStars.rotation.y = elapsedTime * 0.02;
+                backgroundStars.rotation.x = elapsedTime * 0.01;
+            }
+
+            // Actualizar controles de cámara orbital
+            controls.update();
+
+            // Renderizar la escena final
+            renderer.render(scene, camera);
+        }
+
+        // Arrancar simulación una vez cargada la ventana
+        window.onload = () => {
+            init();
+            animate();
+        };
     </script>
 </body>
 </html>
