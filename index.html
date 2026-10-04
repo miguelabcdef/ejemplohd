@@ -2,33 +2,24 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Planeta Saturno 3D</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Galaxy Simulation</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
         }
         body, html {
             width: 100%;
             height: 100%;
-            background-color: #000003;
-            cursor: grab;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-        }
-        body:active {
-            cursor: grabbing;
+            background-color: #000000;
         }
         canvas {
             display: block;
-            width: 100vw;
-            height: 100vh;
-            touch-action: none;
+            width: 100%;
+            height: 100%;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -37,361 +28,150 @@
 
     <script>
         window.onload = function () {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-
+            // Scene creation
             const scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000005, 0.0003);
+            scene.fog = new THREE.FogExp2(0x000000, 0.0008);
 
-            // Pivote de la cámara para la rotación lenta del espacio
-            const cameraPivot = new THREE.Group();
-            scene.add(cameraPivot);
-
-            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000);
+            // Camera setup
+            const camera = new THREE.PerspectiveCamera(
+                60, 
+                window.innerWidth / window.innerHeight, 
+                0.1, 
+                1000
+            );
             
-            let currentCameraDistance = isMobile ? 620 : 500;
-            camera.position.set(0, 140, currentCameraDistance);
-            cameraPivot.add(camera);
+            // Initial camera distance and height
+            const cameraRadius = 35;
+            let cameraAngle = 0;
+            camera.position.set(0, 20, cameraRadius);
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            // WebGL Renderer setup
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
-            renderer.shadowMap.enabled = !isMobile;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.body.appendChild(renderer.domElement);
 
-            const sunGroup = new THREE.Group();
-            sunGroup.position.set(-750, 280, -650);
-            scene.add(sunGroup);
-
-            const sunLight = new THREE.PointLight(0xfff5e6, isMobile ? 3.2 : 3.8, 4500);
-            sunLight.castShadow = !isMobile;
-            if (!isMobile) {
-                sunLight.shadow.mapSize.width = 1024;
-                sunLight.shadow.mapSize.height = 1024;
-            }
-            sunGroup.add(sunLight);
-
-            const ambientLight = new THREE.AmbientLight(0x1c2338, 0.5);
-            scene.add(ambientLight);
-
-            const sunGeo = new THREE.SphereGeometry(75, 32, 32);
-            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffddaa });
-            const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-            sunGroup.add(sunMesh);
-
-            const createGlowTexture = () => {
+            // Helper function to create a soft glowing radial particle texture
+            function createParticleTexture() {
                 const canvas = document.createElement('canvas');
-                canvas.width = 128;
-                canvas.height = 128;
+                canvas.width = 64;
+                canvas.height = 64;
                 const ctx = canvas.getContext('2d');
-                const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-                gradient.addColorStop(0, 'rgba(255, 240, 200, 1)');
-                gradient.addColorStop(0.2, 'rgba(255, 180, 80, 0.8)');
-                gradient.addColorStop(0.5, 'rgba(255, 100, 20, 0.3)');
-                gradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+
+                const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)');
+                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
                 ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 128, 128);
-                return new THREE.CanvasTexture(canvas);
+                ctx.fillRect(0, 0, 64, 64);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                return texture;
+            }
+
+            const starTexture = createParticleTexture();
+
+            const parameters = {
+                count: 120000,
+                size: 0.2,
+                radius: 40,
+                branches: 4,
+                spin: 1,
+                randomness: 0.5,
+                power: 4,
+                insideColor: '#ff7733',
+                outsideColor: '#0066ff'
             };
 
-            const spriteMaterial = new THREE.SpriteMaterial({
-                map: createGlowTexture(),
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(parameters.count * 3);
+            const colors = new Float32Array(parameters.count * 3);
+            const scales = new Float32Array(parameters.count);
+
+            const colorInside = new THREE.Color(parameters.insideColor);
+            const colorOutside = new THREE.Color(parameters.outsideColor);
+
+            for (let i = 0; i < parameters.count; i++) {
+                // Position along galaxy radius
+                const i3 = i * 3;
+                const radius = Math.random() * parameters.radius;
+                const spinAngle = radius * parameters.spin;
+                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
+
+                // Random offsets for cosmic distribution
+                const randomX = Math.pow(Math.random(), parameters.power) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomY = Math.pow(Math.random(), parameters.power) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomZ = Math.pow(Math.random(), parameters.power) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+
+                positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+                positions[i3 + 1] = randomY;
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+                // Color interpolation based on distance from galaxy core
+                const mixedColor = colorInside.clone();
+                mixedColor.lerp(colorOutside, radius / parameters.radius);
+
+                // Add slight hue variation to stars
+                mixedColor.r += (Math.random() - 0.5) * 0.1;
+                mixedColor.g += (Math.random() - 0.5) * 0.1;
+                mixedColor.b += (Math.random() - 0.5) * 0.1;
+
+                colors[i3] = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
+
+                // Random star sizes
+                scales[i] = Math.random();
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            // Material using custom additive blending for bright glowing effects
+            const material = new THREE.PointsMaterial({
+                size: parameters.size,
+                sizeAttenuation: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+                vertexColors: true,
+                map: starTexture,
                 transparent: true,
+                opacity: 0.8
+            });
+
+            // Galaxy mesh creation
+            const galaxy = new THREE.Points(geometry, material);
+            scene.add(galaxy);
+
+            const bgStarsCount = 3000;
+            const bgGeometry = new THREE.BufferGeometry();
+            const bgPositions = new Float32Array(bgStarsCount * 3);
+
+            for(let i = 0; i < bgStarsCount * 3; i += 3) {
+                bgPositions[i] = (Math.random() - 0.5) * 300;
+                bgPositions[i+1] = (Math.random() - 0.5) * 300;
+                bgPositions[i+2] = (Math.random() - 0.5) * 300;
+            }
+
+            bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+            const bgMaterial = new THREE.PointsMaterial({
+                size: 0.15,
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.5,
+                map: starTexture,
                 blending: THREE.AdditiveBlending
             });
-            const sunGlow = new THREE.Sprite(spriteMaterial);
-            sunGlow.scale.set(550, 550, 1.0);
-            sunGroup.add(sunGlow);
-
-            const starsCount = isMobile ? 2500 : 5000;
-            const starsGeo = new THREE.BufferGeometry();
-            const starsPos = new Float32Array(starsCount * 3);
-            const starsColors = new Float32Array(starsCount * 3);
-
-            for (let i = 0; i < starsCount; i++) {
-                const i3 = i * 3;
-                starsPos[i3] = (Math.random() - 0.5) * 2600;
-                starsPos[i3 + 1] = (Math.random() - 0.5) * 2600;
-                starsPos[i3 + 2] = (Math.random() - 0.5) * 2600;
-
-                const colorType = Math.random();
-                if (colorType > 0.8) {
-                    starsColors[i3] = 0.8; starsColors[i3 + 1] = 0.9; starsColors[i3 + 2] = 1.0;
-                } else if (colorType > 0.6) {
-                    starsColors[i3] = 1.0; starsColors[i3 + 1] = 0.9; starsColors[i3 + 2] = 0.7;
-                } else {
-                    starsColors[i3] = 1.0; starsColors[i3 + 1] = 1.0; starsColors[i3 + 2] = 1.0;
-                }
-            }
-
-            starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
-            starsGeo.setAttribute('color', new THREE.BufferAttribute(starsColors, 3));
-
-            const starsMat = new THREE.PointsMaterial({
-                size: isMobile ? 1.8 : 1.5,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.9
-            });
-            const starField = new THREE.Points(starsGeo, starsMat);
-            scene.add(starField);
-
-            const saturnSystem = new THREE.Group();
-            scene.add(saturnSystem);
-
-            const saturnGroup = new THREE.Group();
-            saturnGroup.rotation.z = 26.73 * (Math.PI / 180);
-            saturnSystem.add(saturnGroup);
-
-            const createSaturnTexture = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 256;
-                const ctx = canvas.getContext('2d');
-
-                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                gradient.addColorStop(0.00, '#4a3b2c');
-                gradient.addColorStop(0.15, '#a38f73');
-                gradient.addColorStop(0.30, '#d1be9b');
-                gradient.addColorStop(0.45, '#e0cfad');
-                gradient.addColorStop(0.50, '#c7b38e');
-                gradient.addColorStop(0.55, '#dfceac');
-                gradient.addColorStop(0.70, '#b8a383');
-                gradient.addColorStop(0.85, '#8c775a');
-                gradient.addColorStop(1.00, '#3d3023');
-
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                for (let i = 0; i < 180; i++) {
-                    const y = Math.random() * canvas.height;
-                    const h = Math.random() * 3 + 1;
-                    const opacity = Math.random() * 0.15;
-                    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-                    ctx.fillRect(0, y, canvas.width, h);
-                }
-
-                return new THREE.CanvasTexture(canvas);
-            };
-
-            const planetGeo = new THREE.SphereGeometry(85, isMobile ? 48 : 64, isMobile ? 48 : 64);
-            const planetMat = new THREE.MeshStandardMaterial({
-                map: createSaturnTexture(),
-                roughness: 0.8,
-                metalness: 0.1
-            });
-            const planetMesh = new THREE.Mesh(planetGeo, planetMat);
-            planetMesh.receiveShadow = !isMobile;
-            planetMesh.castShadow = !isMobile;
-            saturnGroup.add(planetMesh);
-
-            const particleCount = isMobile ? 35000 : 100000;
-            const ringGeo = new THREE.BufferGeometry();
-            const positions = new Float32Array(particleCount * 3);
-            const colors = new Float32Array(particleCount * 3);
-
-            const innerRadius = 110;
-            const outerRadius = 320;
-
-            const ringColorsPalette = [
-                new THREE.Color(0xd9c5a0),
-                new THREE.Color(0xb59e79),
-                new THREE.Color(0x8c7758),
-                new THREE.Color(0xe6d7bc),
-                new THREE.Color(0x6b5d47),
-                new THREE.Color(0xa3a398)
-            ];
-
-            for (let i = 0; i < particleCount; i++) {
-                const i3 = i * 3;
-                let radius = innerRadius + Math.random() * (outerRadius - innerRadius);
-
-                if (radius > 195 && radius < 210 && Math.random() > 0.15) {
-                    radius += (Math.random() > 0.5 ? 20 : -20);
-                }
-
-                const angle = Math.random() * Math.PI * 2;
-                const height = (Math.random() - 0.5) * (Math.random() < 0.1 ? 3.5 : 1.0);
-
-                positions[i3] = Math.cos(angle) * radius;
-                positions[i3 + 1] = height;
-                positions[i3 + 2] = Math.sin(angle) * radius;
-
-                let color;
-                const normalizedRadius = (radius - innerRadius) / (outerRadius - innerRadius);
-
-                if (normalizedRadius < 0.3) {
-                    color = ringColorsPalette[0].clone().lerp(ringColorsPalette[1], Math.random());
-                } else if (normalizedRadius < 0.65) {
-                    color = ringColorsPalette[2].clone().lerp(ringColorsPalette[3], Math.random());
-                } else if (normalizedRadius < 0.72) {
-                    color = ringColorsPalette[4].clone();
-                } else {
-                    color = ringColorsPalette[3].clone().lerp(ringColorsPalette[5], Math.random());
-                }
-
-                colors[i3] = color.r;
-                colors[i3 + 1] = color.g;
-                colors[i3 + 2] = color.b;
-            }
-
-            ringGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            ringGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-            const createParticleTexture = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 16;
-                canvas.height = 16;
-                const ctx = canvas.getContext('2d');
-                const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-                gradient.addColorStop(0, 'rgba(255,255,255,1)');
-                gradient.addColorStop(0.5, 'rgba(255,255,255,0.5)');
-                gradient.addColorStop(1, 'rgba(255,255,255,0)');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(8, 8, 8, 0, Math.PI * 2);
-                ctx.fill();
-                return new THREE.CanvasTexture(canvas);
-            };
-
-            const ringMat = new THREE.PointsMaterial({
-                size: isMobile ? 1.6 : 1.2,
-                vertexColors: true,
-                map: createParticleTexture(),
-                transparent: true,
-                opacity: 0.85,
-                depthWrite: false,
-                blending: THREE.NormalBlending
-            });
-
-            const ringParticles = new THREE.Points(ringGeo, ringMat);
-            saturnGroup.add(ringParticles);
-
-            const ringHitGeo = new THREE.RingGeometry(innerRadius, outerRadius, 32);
-            const ringHitMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
-            const ringHitMesh = new THREE.Mesh(ringHitGeo, ringHitMat);
-            ringHitMesh.rotation.x = Math.PI / 2;
-            saturnGroup.add(ringHitMesh);
-
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
-
-            let isDragging = false;
-            let targetMode = null;
-            let previousMousePosition = { x: 0, y: 0 };
-
-            let initialPinchDistance = 0;
-            let isPinching = false;
-
-            let saturnTargetRotationY = 0;
-            let saturnTargetRotationX = 0;
-
-            let cameraTargetRotationY = 0;
-            let cameraTargetRotationX = 0;
-
-            const interactiveObjects = [planetMesh, ringHitMesh];
-
-            const getTouchDistance = (e) => {
-                const dx = e.touches[0].clientX - e.touches[1].clientX;
-                const dy = e.touches[0].clientY - e.touches[1].clientY;
-                return Math.sqrt(dx * dx + dy * dy);
-            };
-
-            const onPointerDown = (e) => {
-                if (e.touches && e.touches.length === 2) {
-                    isPinching = true;
-                    isDragging = false;
-                    initialPinchDistance = getTouchDistance(e);
-                    return;
-                }
-
-                if (e.touches && e.touches.length > 2) return;
-
-                isDragging = true;
-                isPinching = false;
-
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                previousMousePosition = { x: clientX, y: clientY };
-
-                mouse.x = (clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(interactiveObjects);
-
-                if (intersects.length > 0) {
-                    targetMode = 'planet';
-                } else {
-                    targetMode = 'camera';
-                }
-            };
-
-            const onPointerMove = (e) => {
-                if (isPinching && e.touches && e.touches.length === 2) {
-                    const currentDistance = getTouchDistance(e);
-                    const deltaDistance = initialPinchDistance - currentDistance;
-                    
-                    currentCameraDistance += deltaDistance * 0.4;
-                    currentCameraDistance = Math.max(250, Math.min(1200, currentCameraDistance));
-                    
-                    initialPinchDistance = currentDistance;
-                    return;
-                }
-
-                if (!isDragging) return;
-
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-                const deltaX = clientX - previousMousePosition.x;
-                const deltaY = clientY - previousMousePosition.y;
-
-                if (targetMode === 'planet') {
-                    saturnTargetRotationY += deltaX * 0.005;
-                    saturnTargetRotationX += deltaY * 0.005;
-                    saturnTargetRotationX = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, saturnTargetRotationX));
-                } else if (targetMode === 'camera') {
-                    // Control de cámara ultra lento y suave
-                    cameraTargetRotationY -= deltaX * 0.0012;
-                    cameraTargetRotationX -= deltaY * 0.0012;
-                    cameraTargetRotationX = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, cameraTargetRotationX));
-                }
-
-                previousMousePosition = { x: clientX, y: clientY };
-            };
-
-            const onPointerUp = (e) => {
-                if (e.touches && e.touches.length === 1) {
-                    isPinching = false;
-                    isDragging = false;
-                    return;
-                }
-                isDragging = false;
-                isPinching = false;
-                targetMode = null;
-            };
-
-            const onWheel = (e) => {
-                currentCameraDistance += e.deltaY * 0.3;
-                currentCameraDistance = Math.max(250, Math.min(1200, currentCameraDistance));
-            };
-
-            window.addEventListener('mousedown', onPointerDown);
-            window.addEventListener('mousemove', onPointerMove);
-            window.addEventListener('mouseup', onPointerUp);
-            window.addEventListener('wheel', onWheel, { passive: true });
-
-            window.addEventListener('touchstart', onPointerDown, { passive: false });
-            window.addEventListener('touchmove', onPointerMove, { passive: false });
-            window.addEventListener('touchend', onPointerUp, { passive: false });
-            window.addEventListener('touchcancel', onPointerUp, { passive: false });
+            const bgStars = new THREE.Points(bgGeometry, bgMaterial);
+            scene.add(bgStars);
 
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             });
 
             const clock = new THREE.Clock();
@@ -401,33 +181,25 @@
 
                 const elapsedTime = clock.getElapsedTime();
 
-                // Rotación propia del planeta y anillos
-                planetMesh.rotation.y = elapsedTime * 0.08;
-                ringParticles.rotation.y = elapsedTime * 0.03;
+                // Rotate galaxy on its axis
+                galaxy.rotation.y = elapsedTime * 0.05;
 
-                // Rotación suave del planeta al arrastrarlo
-                saturnGroup.rotation.y += (saturnTargetRotationY - saturnGroup.rotation.y) * 0.05;
-                saturnGroup.rotation.x += (saturnTargetRotationX - saturnGroup.rotation.x) * 0.05;
+                // Smooth camera orbital rotation
+                cameraAngle = elapsedTime * 0.08;
+                camera.position.x = Math.sin(cameraAngle) * cameraRadius;
+                camera.position.z = Math.cos(cameraAngle) * cameraRadius;
+                
+                // Gentle camera height oscillation
+                camera.position.y = Math.sin(elapsedTime * 0.1) * 8 + 12;
 
-                if (!isDragging || targetMode !== 'planet') {
-                    saturnTargetRotationY += 0.0012;
-                }
+                // Always focus camera at galaxy center
+                camera.lookAt(0, 0, 0);
 
-                // Desplazamiento panorámico automático y muy lento de la cámara cuando no se arrastra
-                if (!isDragging || targetMode !== 'camera') {
-                    cameraTargetRotationY += 0.00025;
-                }
-
-                // Amortiguación/Lerp muy suave y pausado para la cámara (Factor 0.02)
-                cameraPivot.rotation.y += (cameraTargetRotationY - cameraPivot.rotation.y) * 0.02;
-                cameraPivot.rotation.x += (cameraTargetRotationX - cameraPivot.rotation.x) * 0.02;
-
-                // Zoom ultra pausado
-                camera.position.z += (currentCameraDistance - camera.position.z) * 0.03;
-
+                // Render scene
                 renderer.render(scene, camera);
             }
 
+            // Start animation loop
             animate();
         };
     </script>
