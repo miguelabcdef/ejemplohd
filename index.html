@@ -29,11 +29,9 @@
 
     <script>
         window.onload = function () {
-            // Scene creation with cosmic black background and fog
             const scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x000000, 0.0005);
 
-            // Perspective Camera setup
             const camera = new THREE.PerspectiveCamera(
                 55, 
                 window.innerWidth / window.innerHeight, 
@@ -43,20 +41,63 @@
             
             camera.position.set(0, 20, 55);
 
-            // WebGL Renderer setup
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.body.appendChild(renderer.domElement);
 
-            // Setup OrbitControls for mouse and touch interaction
             const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // Smooth inertial movement
+            controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.autoRotate = true; // Auto rotation enabled by default
+            controls.autoRotate = true;
             controls.autoRotateSpeed = 0.8;
-            controls.minDistance = 10; // Zoom limits
+            controls.minDistance = 10;
             controls.maxDistance = 150;
+
+            let gyroEnabled = false;
+            let targetGyroX = 0;
+            let targetGyroY = 0;
+            let currentGyroX = 0;
+            let currentGyroY = 0;
+
+            function handleOrientation(event) {
+                if (event.beta === null || event.gamma === null) return;
+
+                // Normalize beta (-180 to 180) and gamma (-90 to 90) for camera tilt offset
+                const beta = Math.max(-90, Math.min(90, event.beta));   // Front-back tilt
+                const gamma = Math.max(-90, Math.min(90, event.gamma)); // Left-right tilt
+
+                targetGyroX = (beta / 90) * 0.8;  // Vertical camera tilt factor
+                targetGyroY = (gamma / 90) * 0.8; // Horizontal camera tilt factor
+                gyroEnabled = true;
+            }
+
+            function requestGyroPermission() {
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    // iOS 13+ permission request
+                    DeviceOrientationEvent.requestPermission()
+                        .then(permissionState => {
+                            if (permissionState === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation, true);
+                            }
+                        })
+                        .catch(console.error);
+                } else if ('addEventListener' in window) {
+                    // Standard Android / Web browsers
+                    window.addEventListener('deviceorientation', handleOrientation, true);
+                }
+            }
+
+            // Invisible full-screen gesture trigger to comply with browser permission policies
+            window.addEventListener('touchstart', function initialTouchPermission() {
+                requestGyroPermission();
+                window.removeEventListener('touchstart', initialTouchPermission);
+            }, { once: true });
+
+            window.addEventListener('click', function initialClickPermission() {
+                requestGyroPermission();
+                window.removeEventListener('click', initialClickPermission);
+            }, { once: true });
 
             function createParticleTexture() {
                 const canvas = document.createElement('canvas');
@@ -66,7 +107,7 @@
 
                 const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
                 gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.85)');
+                gradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.85)');
                 gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
@@ -83,13 +124,12 @@
             const positions = new Float32Array(particleCount * 3);
             const colors = new Float32Array(particleCount * 3);
 
-            // Color definitions for S0 lenticular galaxy (warm elliptical core + cool outer smooth disk)
-            const coreColorInner = new THREE.Color('#ffffff'); // Pure bright core center
-            const coreColorMid   = new THREE.Color('#ffcc77'); // Warm gold/yellow core bulge
-            const coreColorOuter = new THREE.Color('#ff9944'); // Subtle orange transition
-            const diskColorInner = new THREE.Color('#99ccff'); // Soft pale blue disk
-            const diskColorOuter = new THREE.Color('#4477bb'); // Dim azure outer disk boundary
-            const dustColor      = new THREE.Color('#331100'); // Subtle dark dust ring accent
+            const coreColorInner = new THREE.Color('#ffffff');
+            const coreColorMid   = new THREE.Color('#ffcc77');
+            const coreColorOuter = new THREE.Color('#ff9944');
+            const diskColorInner = new THREE.Color('#99ccff');
+            const diskColorOuter = new THREE.Color('#4477bb');
+            const dustColor      = new THREE.Color('#331100');
 
             const maxDiskRadius = 45;
             const coreBulgeRadius = 12;
@@ -100,22 +140,17 @@
                 let x, y, z;
                 let color = new THREE.Color();
 
-                // 40% Bulge (Elliptical / Spherical central hub of older stars)
-                // 60% Smooth Disk (Flat, continuous, non-spiral stellar disk)
                 const isBulge = Math.random() < 0.40;
 
                 if (isBulge) {
-                    // Central bulge distribution (Gaussian-like concentration)
                     const r = Math.pow(Math.random(), 2.5) * coreBulgeRadius;
                     const theta = Math.random() * Math.PI * 2;
                     const phi = Math.acos((Math.random() * 2) - 1);
 
-                    // Spheroidal to slightly oblate bulge
                     x = r * Math.sin(phi) * Math.cos(theta);
-                    y = r * Math.cos(phi) * 0.65; // Oblate axial ratio
+                    y = r * Math.cos(phi) * 0.65;
                     z = r * Math.sin(phi) * Math.sin(theta);
 
-                    // Color gradient for core bulge
                     const normR = r / coreBulgeRadius;
                     if (normR < 0.25) {
                         color.copy(coreColorInner).lerp(coreColorMid, normR * 4);
@@ -123,11 +158,9 @@
                         color.copy(coreColorMid).lerp(coreColorOuter, (normR - 0.25) * 1.33);
                     }
                 } else {
-                    // Smooth, uniform lenticular disk (NO spiral arms)
                     const r = Math.pow(Math.random(), 1.2) * (maxDiskRadius - 2) + 2;
                     const theta = Math.random() * Math.PI * 2;
 
-                    // Thickness decreases smoothly from center outward (lenticular lens profile)
                     const thicknessFactor = Math.exp(-r * 0.08) * 3.5 + 0.4;
                     const h = (Math.random() - 0.5) * thicknessFactor * (Math.pow(Math.random(), 2));
 
@@ -135,17 +168,14 @@
                     y = h;
                     z = Math.sin(theta) * r;
 
-                    // Color gradient for the smooth disk
                     const normR = r / maxDiskRadius;
                     color.copy(diskColorInner).lerp(diskColorOuter, normR);
 
-                    // Subtle dust lane absorption ring effect between bulge and outer disk
                     if (r > 12 && r < 18 && Math.abs(h) < 0.6 && Math.random() < 0.3) {
                         color.lerp(dustColor, 0.7);
                     }
                 }
 
-                // Add subtle random variance for organic realism
                 color.r = Math.min(1, Math.max(0, color.r + (Math.random() - 0.5) * 0.08));
                 color.g = Math.min(1, Math.max(0, color.g + (Math.random() - 0.5) * 0.08));
                 color.b = Math.min(1, Math.max(0, color.b + (Math.random() - 0.5) * 0.08));
@@ -213,17 +243,25 @@
 
                 const elapsedTime = clock.getElapsedTime();
 
-                // Slow axial rotation of the galaxy body itself
+                // Rotate galaxy around its axis
                 lenticularGalaxy.rotation.y = elapsedTime * 0.015;
 
-                // Update interactive camera controls and smooth inertia damping
+                // Smoothly interpolate gyroscope offsets
+                if (gyroEnabled) {
+                    currentGyroX += (targetGyroX - currentGyroX) * 0.05;
+                    currentGyroY += (targetGyroY - currentGyroY) * 0.05;
+
+                    // Apply gyro tilt to scene view orientation
+                    scene.rotation.x = currentGyroX;
+                    scene.rotation.z = -currentGyroY;
+                }
+
+                // Update orbit controls (touch/mouse swipe + zoom)
                 controls.update();
 
-                // Render frame
                 renderer.render(scene, camera);
             }
 
-            // Start animation loop
             animate();
         };
     </script>
