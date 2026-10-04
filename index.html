@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Galaxy Simulation</title>
+    <title>3D Lenticular Galaxy Simulation</title>
     <style>
         * {
             margin: 0;
@@ -23,27 +23,25 @@
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
     <script>
         window.onload = function () {
-            // Scene creation
+            // Scene creation with cosmic black background and fog
             const scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.0008);
+            scene.fog = new THREE.FogExp2(0x000000, 0.0005);
 
-            // Camera setup
+            // Perspective Camera setup
             const camera = new THREE.PerspectiveCamera(
-                60, 
+                55, 
                 window.innerWidth / window.innerHeight, 
                 0.1, 
                 1000
             );
             
-            // Initial camera distance and height
-            const cameraRadius = 35;
-            let cameraAngle = 0;
-            camera.position.set(0, 20, cameraRadius);
+            camera.position.set(0, 20, 55);
 
             // WebGL Renderer setup
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -51,7 +49,15 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.body.appendChild(renderer.domElement);
 
-            // Helper function to create a soft glowing radial particle texture
+            // Setup OrbitControls for mouse and touch interaction
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // Smooth inertial movement
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true; // Auto rotation enabled by default
+            controls.autoRotateSpeed = 0.8;
+            controls.minDistance = 10; // Zoom limits
+            controls.maxDistance = 150;
+
             function createParticleTexture() {
                 const canvas = document.createElement('canvas');
                 canvas.width = 64;
@@ -60,78 +66,104 @@
 
                 const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
                 gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)');
-                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
+                gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.85)');
+                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, 64, 64);
 
-                const texture = new THREE.CanvasTexture(canvas);
-                return texture;
+                return new THREE.CanvasTexture(canvas);
             }
 
             const starTexture = createParticleTexture();
 
-            const parameters = {
-                count: 120000,
-                size: 0.2,
-                radius: 40,
-                branches: 4,
-                spin: 1,
-                randomness: 0.5,
-                power: 4,
-                insideColor: '#ff7733',
-                outsideColor: '#0066ff'
-            };
-
+            const particleCount = 130000;
             const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(parameters.count * 3);
-            const colors = new Float32Array(parameters.count * 3);
-            const scales = new Float32Array(parameters.count);
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
 
-            const colorInside = new THREE.Color(parameters.insideColor);
-            const colorOutside = new THREE.Color(parameters.outsideColor);
+            // Color definitions for S0 lenticular galaxy (warm elliptical core + cool outer smooth disk)
+            const coreColorInner = new THREE.Color('#ffffff'); // Pure bright core center
+            const coreColorMid   = new THREE.Color('#ffcc77'); // Warm gold/yellow core bulge
+            const coreColorOuter = new THREE.Color('#ff9944'); // Subtle orange transition
+            const diskColorInner = new THREE.Color('#99ccff'); // Soft pale blue disk
+            const diskColorOuter = new THREE.Color('#4477bb'); // Dim azure outer disk boundary
+            const dustColor      = new THREE.Color('#331100'); // Subtle dark dust ring accent
 
-            for (let i = 0; i < parameters.count; i++) {
-                // Position along galaxy radius
+            const maxDiskRadius = 45;
+            const coreBulgeRadius = 12;
+
+            for (let i = 0; i < particleCount; i++) {
                 const i3 = i * 3;
-                const radius = Math.random() * parameters.radius;
-                const spinAngle = radius * parameters.spin;
-                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
 
-                // Random offsets for cosmic distribution
-                const randomX = Math.pow(Math.random(), parameters.power) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
-                const randomY = Math.pow(Math.random(), parameters.power) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
-                const randomZ = Math.pow(Math.random(), parameters.power) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                let x, y, z;
+                let color = new THREE.Color();
 
-                positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
-                positions[i3 + 1] = randomY;
-                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+                // 40% Bulge (Elliptical / Spherical central hub of older stars)
+                // 60% Smooth Disk (Flat, continuous, non-spiral stellar disk)
+                const isBulge = Math.random() < 0.40;
 
-                // Color interpolation based on distance from galaxy core
-                const mixedColor = colorInside.clone();
-                mixedColor.lerp(colorOutside, radius / parameters.radius);
+                if (isBulge) {
+                    // Central bulge distribution (Gaussian-like concentration)
+                    const r = Math.pow(Math.random(), 2.5) * coreBulgeRadius;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos((Math.random() * 2) - 1);
 
-                // Add slight hue variation to stars
-                mixedColor.r += (Math.random() - 0.5) * 0.1;
-                mixedColor.g += (Math.random() - 0.5) * 0.1;
-                mixedColor.b += (Math.random() - 0.5) * 0.1;
+                    // Spheroidal to slightly oblate bulge
+                    x = r * Math.sin(phi) * Math.cos(theta);
+                    y = r * Math.cos(phi) * 0.65; // Oblate axial ratio
+                    z = r * Math.sin(phi) * Math.sin(theta);
 
-                colors[i3] = mixedColor.r;
-                colors[i3 + 1] = mixedColor.g;
-                colors[i3 + 2] = mixedColor.b;
+                    // Color gradient for core bulge
+                    const normR = r / coreBulgeRadius;
+                    if (normR < 0.25) {
+                        color.copy(coreColorInner).lerp(coreColorMid, normR * 4);
+                    } else {
+                        color.copy(coreColorMid).lerp(coreColorOuter, (normR - 0.25) * 1.33);
+                    }
+                } else {
+                    // Smooth, uniform lenticular disk (NO spiral arms)
+                    const r = Math.pow(Math.random(), 1.2) * (maxDiskRadius - 2) + 2;
+                    const theta = Math.random() * Math.PI * 2;
 
-                // Random star sizes
-                scales[i] = Math.random();
+                    // Thickness decreases smoothly from center outward (lenticular lens profile)
+                    const thicknessFactor = Math.exp(-r * 0.08) * 3.5 + 0.4;
+                    const h = (Math.random() - 0.5) * thicknessFactor * (Math.pow(Math.random(), 2));
+
+                    x = Math.cos(theta) * r;
+                    y = h;
+                    z = Math.sin(theta) * r;
+
+                    // Color gradient for the smooth disk
+                    const normR = r / maxDiskRadius;
+                    color.copy(diskColorInner).lerp(diskColorOuter, normR);
+
+                    // Subtle dust lane absorption ring effect between bulge and outer disk
+                    if (r > 12 && r < 18 && Math.abs(h) < 0.6 && Math.random() < 0.3) {
+                        color.lerp(dustColor, 0.7);
+                    }
+                }
+
+                // Add subtle random variance for organic realism
+                color.r = Math.min(1, Math.max(0, color.r + (Math.random() - 0.5) * 0.08));
+                color.g = Math.min(1, Math.max(0, color.g + (Math.random() - 0.5) * 0.08));
+                color.b = Math.min(1, Math.max(0, color.b + (Math.random() - 0.5) * 0.08));
+
+                positions[i3]     = x;
+                positions[i3 + 1] = y;
+                positions[i3 + 2] = z;
+
+                colors[i3]     = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-            // Material using custom additive blending for bright glowing effects
             const material = new THREE.PointsMaterial({
-                size: parameters.size,
+                size: 0.24,
                 sizeAttenuation: true,
                 depthWrite: false,
                 blending: THREE.AdditiveBlending,
@@ -141,18 +173,17 @@
                 opacity: 0.8
             });
 
-            // Galaxy mesh creation
-            const galaxy = new THREE.Points(geometry, material);
-            scene.add(galaxy);
+            const lenticularGalaxy = new THREE.Points(geometry, material);
+            scene.add(lenticularGalaxy);
 
-            const bgStarsCount = 3000;
+            const bgStarsCount = 3500;
             const bgGeometry = new THREE.BufferGeometry();
             const bgPositions = new Float32Array(bgStarsCount * 3);
 
-            for(let i = 0; i < bgStarsCount * 3; i += 3) {
-                bgPositions[i] = (Math.random() - 0.5) * 300;
-                bgPositions[i+1] = (Math.random() - 0.5) * 300;
-                bgPositions[i+2] = (Math.random() - 0.5) * 300;
+            for (let i = 0; i < bgStarsCount * 3; i += 3) {
+                bgPositions[i]     = (Math.random() - 0.5) * 450;
+                bgPositions[i + 1] = (Math.random() - 0.5) * 450;
+                bgPositions[i + 2] = (Math.random() - 0.5) * 450;
             }
 
             bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
@@ -160,10 +191,11 @@
                 size: 0.15,
                 color: 0xffffff,
                 transparent: true,
-                opacity: 0.5,
+                opacity: 0.4,
                 map: starTexture,
                 blending: THREE.AdditiveBlending
             });
+
             const bgStars = new THREE.Points(bgGeometry, bgMaterial);
             scene.add(bgStars);
 
@@ -181,21 +213,13 @@
 
                 const elapsedTime = clock.getElapsedTime();
 
-                // Rotate galaxy on its axis
-                galaxy.rotation.y = elapsedTime * 0.05;
+                // Slow axial rotation of the galaxy body itself
+                lenticularGalaxy.rotation.y = elapsedTime * 0.015;
 
-                // Smooth camera orbital rotation
-                cameraAngle = elapsedTime * 0.08;
-                camera.position.x = Math.sin(cameraAngle) * cameraRadius;
-                camera.position.z = Math.cos(cameraAngle) * cameraRadius;
-                
-                // Gentle camera height oscillation
-                camera.position.y = Math.sin(elapsedTime * 0.1) * 8 + 12;
+                // Update interactive camera controls and smooth inertia damping
+                controls.update();
 
-                // Always focus camera at galaxy center
-                camera.lookAt(0, 0, 0);
-
-                // Render scene
+                // Render frame
                 renderer.render(scene, camera);
             }
 
