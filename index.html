@@ -19,7 +19,7 @@
             cursor: grab;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* Previene gestos por defecto del navegador en móviles */
+            touch-action: none;
         }
         body:active {
             cursor: grabbing;
@@ -31,7 +31,6 @@
             touch-action: none;
         }
     </style>
-    <!-- Carga de Three.js para renderizado 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -43,13 +42,12 @@
             const scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x000005, 0.0003);
 
-            // Pivote de la cámara para la rotación del espacio
+            // Pivote de la cámara para la rotación lenta del espacio
             const cameraPivot = new THREE.Group();
             scene.add(cameraPivot);
 
             const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000);
             
-            // Distancia de cámara adaptable a pantallas pequeñas/móviles
             let currentCameraDistance = isMobile ? 620 : 500;
             camera.position.set(0, 140, currentCameraDistance);
             cameraPivot.add(camera);
@@ -57,11 +55,10 @@
             const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
-            renderer.shadowMap.enabled = !isMobile; // Sombras activadas en desktop, desactivadas en móvil para máxima fluidez
+            renderer.shadowMap.enabled = !isMobile;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.body.appendChild(renderer.domElement);
 
-            // 1. SOL ESTÁTICO Y BRILLANTE
             const sunGroup = new THREE.Group();
             sunGroup.position.set(-750, 280, -650);
             scene.add(sunGroup);
@@ -106,7 +103,6 @@
             sunGlow.scale.set(550, 550, 1.0);
             sunGroup.add(sunGlow);
 
-            // 2. FONDO DE ESTRELLAS OPTIMIZADO
             const starsCount = isMobile ? 2500 : 5000;
             const starsGeo = new THREE.BufferGeometry();
             const starsPos = new Float32Array(starsCount * 3);
@@ -140,12 +136,11 @@
             const starField = new THREE.Points(starsGeo, starsMat);
             scene.add(starField);
 
-            // 3. PLANETA SATURNO
             const saturnSystem = new THREE.Group();
             scene.add(saturnSystem);
 
             const saturnGroup = new THREE.Group();
-            saturnGroup.rotation.z = 26.73 * (Math.PI / 180); // Inclinación eje
+            saturnGroup.rotation.z = 26.73 * (Math.PI / 180);
             saturnSystem.add(saturnGroup);
 
             const createSaturnTexture = () => {
@@ -190,7 +185,6 @@
             planetMesh.castShadow = !isMobile;
             saturnGroup.add(planetMesh);
 
-            // ANILLOS DE PARTÍCULAS (Ajustado para rendimiento móvil fluido a 60FPS)
             const particleCount = isMobile ? 35000 : 100000;
             const ringGeo = new THREE.BufferGeometry();
             const positions = new Float32Array(particleCount * 3);
@@ -273,22 +267,19 @@
             const ringParticles = new THREE.Points(ringGeo, ringMat);
             saturnGroup.add(ringParticles);
 
-            // Malla invisible para interacción táctil con Raycaster
             const ringHitGeo = new THREE.RingGeometry(innerRadius, outerRadius, 32);
             const ringHitMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
             const ringHitMesh = new THREE.Mesh(ringHitGeo, ringHitMat);
             ringHitMesh.rotation.x = Math.PI / 2;
             saturnGroup.add(ringHitMesh);
 
-            // 4. SISTEMA DE INTERACCIÓN TÁCTIL MÓVIL Y RATÓN
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
 
             let isDragging = false;
-            let targetMode = null; // 'planet' o 'camera'
+            let targetMode = null;
             let previousMousePosition = { x: 0, y: 0 };
 
-            // Zoom por Pinch táctil
             let initialPinchDistance = 0;
             let isPinching = false;
 
@@ -307,7 +298,6 @@
             };
 
             const onPointerDown = (e) => {
-                // Manejar Pinch-Zoom con 2 dedos en móvil
                 if (e.touches && e.touches.length === 2) {
                     isPinching = true;
                     isDragging = false;
@@ -338,12 +328,11 @@
             };
 
             const onPointerMove = (e) => {
-                // Pinch-Zoom en móvil
                 if (isPinching && e.touches && e.touches.length === 2) {
                     const currentDistance = getTouchDistance(e);
                     const deltaDistance = initialPinchDistance - currentDistance;
                     
-                    currentCameraDistance += deltaDistance * 0.8;
+                    currentCameraDistance += deltaDistance * 0.4;
                     currentCameraDistance = Math.max(250, Math.min(1200, currentCameraDistance));
                     
                     initialPinchDistance = currentDistance;
@@ -359,14 +348,13 @@
                 const deltaY = clientY - previousMousePosition.y;
 
                 if (targetMode === 'planet') {
-                    // Rotar únicamente Saturno en su eje
-                    saturnTargetRotationY += deltaX * 0.008;
-                    saturnTargetRotationX += deltaY * 0.008;
+                    saturnTargetRotationY += deltaX * 0.005;
+                    saturnTargetRotationX += deltaY * 0.005;
                     saturnTargetRotationX = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, saturnTargetRotationX));
                 } else if (targetMode === 'camera') {
-                    // Mover la cámara alrededor de la escena
-                    cameraTargetRotationY -= deltaX * 0.004;
-                    cameraTargetRotationX -= deltaY * 0.004;
+                    // Control de cámara ultra lento y suave
+                    cameraTargetRotationY -= deltaX * 0.0012;
+                    cameraTargetRotationX -= deltaY * 0.0012;
                     cameraTargetRotationX = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, cameraTargetRotationX));
                 }
 
@@ -375,7 +363,6 @@
 
             const onPointerUp = (e) => {
                 if (e.touches && e.touches.length === 1) {
-                    // Transición de pinch a 1 dedo
                     isPinching = false;
                     isDragging = false;
                     return;
@@ -385,13 +372,11 @@
                 targetMode = null;
             };
 
-            // Zoom con la rueda del ratón en escritorio
             const onWheel = (e) => {
-                currentCameraDistance += e.deltaY * 0.5;
+                currentCameraDistance += e.deltaY * 0.3;
                 currentCameraDistance = Math.max(250, Math.min(1200, currentCameraDistance));
             };
 
-            // Listeners de eventos híbridos (Táctil y Ratón)
             window.addEventListener('mousedown', onPointerDown);
             window.addEventListener('mousemove', onPointerMove);
             window.addEventListener('mouseup', onPointerUp);
@@ -402,7 +387,6 @@
             window.addEventListener('touchend', onPointerUp, { passive: false });
             window.addEventListener('touchcancel', onPointerUp, { passive: false });
 
-            // Adaptación al redimensionar o cambiar de orientación en el móvil
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
@@ -410,7 +394,6 @@
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
             });
 
-            // 5. CICLO DE ANIMACIÓN FLUIDA (60 FPS)
             const clock = new THREE.Clock();
 
             function animate() {
@@ -418,24 +401,29 @@
 
                 const elapsedTime = clock.getElapsedTime();
 
-                // Rotación continua autómata sobre el eje de Saturno
+                // Rotación propia del planeta y anillos
                 planetMesh.rotation.y = elapsedTime * 0.08;
                 ringParticles.rotation.y = elapsedTime * 0.03;
 
-                // Inercia suave para Saturno al tocarlo
-                saturnGroup.rotation.y += (saturnTargetRotationY - saturnGroup.rotation.y) * 0.08;
-                saturnGroup.rotation.x += (saturnTargetRotationX - saturnGroup.rotation.x) * 0.08;
+                // Rotación suave del planeta al arrastrarlo
+                saturnGroup.rotation.y += (saturnTargetRotationY - saturnGroup.rotation.y) * 0.05;
+                saturnGroup.rotation.x += (saturnTargetRotationX - saturnGroup.rotation.x) * 0.05;
 
                 if (!isDragging || targetMode !== 'planet') {
-                    saturnTargetRotationY += 0.0015;
+                    saturnTargetRotationY += 0.0012;
                 }
 
-                // Smooth camera rotation
-                cameraPivot.rotation.y += (cameraTargetRotationY - cameraPivot.rotation.y) * 0.06;
-                cameraPivot.rotation.x += (cameraTargetRotationX - cameraPivot.rotation.x) * 0.06;
+                // Desplazamiento panorámico automático y muy lento de la cámara cuando no se arrastra
+                if (!isDragging || targetMode !== 'camera') {
+                    cameraTargetRotationY += 0.00025;
+                }
 
-                // Transición suave de zoom
-                camera.position.z += (currentCameraDistance - camera.position.z) * 0.08;
+                // Amortiguación/Lerp muy suave y pausado para la cámara (Factor 0.02)
+                cameraPivot.rotation.y += (cameraTargetRotationY - cameraPivot.rotation.y) * 0.02;
+                cameraPivot.rotation.x += (cameraTargetRotationX - cameraPivot.rotation.x) * 0.02;
+
+                // Zoom ultra pausado
+                camera.position.z += (currentCameraDistance - camera.position.z) * 0.03;
 
                 renderer.render(scene, camera);
             }
