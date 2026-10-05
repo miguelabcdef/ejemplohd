@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Lenticular Galaxy Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Galaxia Espiral 3D</title>
     <style>
         * {
             margin: 0;
@@ -11,227 +11,248 @@
             box-sizing: border-box;
             overflow: hidden;
         }
-        body, html {
+
+        html, body {
             width: 100%;
             height: 100%;
             background-color: #000000;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        canvas {
+
+        body:active {
+            cursor: grabbing;
+        }
+
+        #galaxy-canvas {
             display: block;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
     </style>
+    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
+    <canvas id="galaxy-canvas"></canvas>
 
     <script>
-        window.onload = function () {
+        window.onload = function() {
+            // Configuración de escena, cámara y renderizador
+            const canvas = document.getElementById('galaxy-canvas');
             const scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.0005);
+            scene.fog = new THREE.FogExp2(0x000000, 0.0008);
 
             const camera = new THREE.PerspectiveCamera(
-                55, 
-                window.innerWidth / window.innerHeight, 
-                0.1, 
-                1000
+                60,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                2000
             );
             
-            camera.position.set(0, 20, 55);
+            // Posición inicial de la cámara para vista en perspectiva
+            camera.position.set(0, 25, 45);
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            const renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                alpha: false,
+                powerPreference: "high-performance"
+            });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            document.body.appendChild(renderer.domElement);
 
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.8;
-            controls.minDistance = 10;
-            controls.maxDistance = 150;
+            // Crear textura brillante personalizada mediante HTML5 Canvas en memoria
+            function createStarTexture() {
+                const texCanvas = document.createElement('canvas');
+                texCanvas.width = 128;
+                texCanvas.height = 128;
+                const ctx = texCanvas.getContext('2d');
 
-            let gyroEnabled = false;
-            let targetGyroX = 0;
-            let targetGyroY = 0;
-            let currentGyroX = 0;
-            let currentGyroY = 0;
-
-            function handleOrientation(event) {
-                if (event.beta === null || event.gamma === null) return;
-
-                // Normalize beta (-180 to 180) and gamma (-90 to 90) for camera tilt offset
-                const beta = Math.max(-90, Math.min(90, event.beta));   // Front-back tilt
-                const gamma = Math.max(-90, Math.min(90, event.gamma)); // Left-right tilt
-
-                targetGyroX = (beta / 90) * 0.8;  // Vertical camera tilt factor
-                targetGyroY = (gamma / 90) * 0.8; // Horizontal camera tilt factor
-                gyroEnabled = true;
-            }
-
-            function requestGyroPermission() {
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    // iOS 13+ permission request
-                    DeviceOrientationEvent.requestPermission()
-                        .then(permissionState => {
-                            if (permissionState === 'granted') {
-                                window.addEventListener('deviceorientation', handleOrientation, true);
-                            }
-                        })
-                        .catch(console.error);
-                } else if ('addEventListener' in window) {
-                    // Standard Android / Web browsers
-                    window.addEventListener('deviceorientation', handleOrientation, true);
-                }
-            }
-
-            // Invisible full-screen gesture trigger to comply with browser permission policies
-            window.addEventListener('touchstart', function initialTouchPermission() {
-                requestGyroPermission();
-                window.removeEventListener('touchstart', initialTouchPermission);
-            }, { once: true });
-
-            window.addEventListener('click', function initialClickPermission() {
-                requestGyroPermission();
-                window.removeEventListener('click', initialClickPermission);
-            }, { once: true });
-
-            function createParticleTexture() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 64;
-                canvas.height = 64;
-                const ctx = canvas.getContext('2d');
-
-                const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
                 gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                gradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.85)');
-                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+                gradient.addColorStop(0.15, 'rgba(255, 230, 255, 0.9)');
+                gradient.addColorStop(0.4, 'rgba(128, 180, 255, 0.4)');
+                gradient.addColorStop(0.8, 'rgba(64, 0, 128, 0.1)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
                 ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 64, 64);
+                ctx.fillRect(0, 0, 128, 128);
 
-                return new THREE.CanvasTexture(canvas);
+                const texture = new THREE.CanvasTexture(texCanvas);
+                texture.needsUpdate = true;
+                return texture;
             }
 
-            const starTexture = createParticleTexture();
+            const starTexture = createStarTexture();
 
-            const particleCount = 130000;
+            // Parámetros de la galaxia
+            const parameters = {
+                count: 180000,           // Densidad masiva de estrellas
+                size: 0.28,
+                radius: 55,
+                branches: 4,             // Brazos espirales
+                spin: 1.2,
+                randomness: 0.6,
+                power: 3.5,
+                insideColor: '#ffaa55',  // Núcleo resplandeciente warm/gold
+                outsideColor: '#1966ff'  // Bordes azul/neón
+            };
+
             const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(particleCount * 3);
-            const colors = new Float32Array(particleCount * 3);
+            const positions = new Float32Array(parameters.count * 3);
+            const colors = new Float32Array(parameters.count * 3);
+            const scales = new Float32Array(parameters.count);
 
-            const coreColorInner = new THREE.Color('#ffffff');
-            const coreColorMid   = new THREE.Color('#ffcc77');
-            const coreColorOuter = new THREE.Color('#ff9944');
-            const diskColorInner = new THREE.Color('#99ccff');
-            const diskColorOuter = new THREE.Color('#4477bb');
-            const dustColor      = new THREE.Color('#331100');
+            const colorInside = new THREE.Color(parameters.insideColor);
+            const colorOutside = new THREE.Color(parameters.outsideColor);
+            const colorCore = new THREE.Color('#ffffff');
 
-            const maxDiskRadius = 45;
-            const coreBulgeRadius = 12;
+            for (let i = 0; i < parameters.count; i++) {
+                // Posición radial
+                const r = Math.pow(Math.random(), parameters.power) * parameters.radius;
+                
+                // Ángulo de brazos espirales
+                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
+                const spinAngle = r * parameters.spin;
 
-            for (let i = 0; i < particleCount; i++) {
+                // Dispersión aleatoria para dar aspecto 3D orgánico
+                const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r;
+                const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r * 0.6;
+                const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r;
+
                 const i3 = i * 3;
 
-                let x, y, z;
-                let color = new THREE.Color();
+                positions[i3]     = Math.cos(branchAngle + spinAngle) * r + randomX;
+                positions[i3 + 1] = randomY;
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * r + randomZ;
 
-                const isBulge = Math.random() < 0.40;
+                // Color interpolado desde el núcleo hacia las puntas
+                const mixedColor = colorInside.clone();
+                const ratio = r / parameters.radius;
+                mixedColor.lerp(colorOutside, ratio);
 
-                if (isBulge) {
-                    const r = Math.pow(Math.random(), 2.5) * coreBulgeRadius;
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.acos((Math.random() * 2) - 1);
-
-                    x = r * Math.sin(phi) * Math.cos(theta);
-                    y = r * Math.cos(phi) * 0.65;
-                    z = r * Math.sin(phi) * Math.sin(theta);
-
-                    const normR = r / coreBulgeRadius;
-                    if (normR < 0.25) {
-                        color.copy(coreColorInner).lerp(coreColorMid, normR * 4);
-                    } else {
-                        color.copy(coreColorMid).lerp(coreColorOuter, (normR - 0.25) * 1.33);
-                    }
-                } else {
-                    const r = Math.pow(Math.random(), 1.2) * (maxDiskRadius - 2) + 2;
-                    const theta = Math.random() * Math.PI * 2;
-
-                    const thicknessFactor = Math.exp(-r * 0.08) * 3.5 + 0.4;
-                    const h = (Math.random() - 0.5) * thicknessFactor * (Math.pow(Math.random(), 2));
-
-                    x = Math.cos(theta) * r;
-                    y = h;
-                    z = Math.sin(theta) * r;
-
-                    const normR = r / maxDiskRadius;
-                    color.copy(diskColorInner).lerp(diskColorOuter, normR);
-
-                    if (r > 12 && r < 18 && Math.abs(h) < 0.6 && Math.random() < 0.3) {
-                        color.lerp(dustColor, 0.7);
-                    }
+                // Brillo extra en el núcleo central
+                if (r < 4) {
+                    mixedColor.lerp(colorCore, 1 - (r / 4));
                 }
 
-                color.r = Math.min(1, Math.max(0, color.r + (Math.random() - 0.5) * 0.08));
-                color.g = Math.min(1, Math.max(0, color.g + (Math.random() - 0.5) * 0.08));
-                color.b = Math.min(1, Math.max(0, color.b + (Math.random() - 0.5) * 0.08));
+                colors[i3]     = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
 
-                positions[i3]     = x;
-                positions[i3 + 1] = y;
-                positions[i3 + 2] = z;
-
-                colors[i3]     = color.r;
-                colors[i3 + 1] = color.g;
-                colors[i3 + 2] = color.b;
+                // Variación de tamaño de partículas
+                scales[i] = Math.random() * 0.8 + 0.2;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
 
             const material = new THREE.PointsMaterial({
-                size: 0.24,
+                size: parameters.size,
                 sizeAttenuation: true,
                 depthWrite: false,
                 blending: THREE.AdditiveBlending,
                 vertexColors: true,
                 map: starTexture,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.95
             });
 
-            const lenticularGalaxy = new THREE.Points(geometry, material);
-            scene.add(lenticularGalaxy);
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
 
-            const bgStarsCount = 3500;
+            // Fondo lejano de estrellas dispersas
+            const bgCount = 20000;
             const bgGeometry = new THREE.BufferGeometry();
-            const bgPositions = new Float32Array(bgStarsCount * 3);
+            const bgPositions = new Float32Array(bgCount * 3);
+            const bgColors = new Float32Array(bgCount * 3);
 
-            for (let i = 0; i < bgStarsCount * 3; i += 3) {
-                bgPositions[i]     = (Math.random() - 0.5) * 450;
-                bgPositions[i + 1] = (Math.random() - 0.5) * 450;
-                bgPositions[i + 2] = (Math.random() - 0.5) * 450;
+            for (let i = 0; i < bgCount; i++) {
+                const i3 = i * 3;
+                const radius = 100 + Math.random() * 400;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+
+                bgPositions[i3]     = radius * Math.sin(phi) * Math.cos(theta);
+                bgPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                bgPositions[i3 + 2] = radius * Math.cos(phi);
+
+                const c = 0.5 + Math.random() * 0.5;
+                bgColors[i3]     = c * 0.8;
+                bgColors[i3 + 1] = c * 0.9;
+                bgColors[i3 + 2] = c;
             }
 
             bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+            bgGeometry.setAttribute('color', new THREE.BufferAttribute(bgColors, 3));
+
             const bgMaterial = new THREE.PointsMaterial({
-                size: 0.15,
-                color: 0xffffff,
+                size: 0.4,
+                sizeAttenuation: true,
                 transparent: true,
-                opacity: 0.4,
+                opacity: 0.6,
+                vertexColors: true,
                 map: starTexture,
                 blending: THREE.AdditiveBlending
             });
 
-            const bgStars = new THREE.Points(bgGeometry, bgMaterial);
-            scene.add(bgStars);
+            const bgPoints = new THREE.Points(bgGeometry, bgMaterial);
+            scene.add(bgPoints);
+
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            // Controladores de interacciones (Ratón y Táctil)
+            function onPointerMove(x, y) {
+                targetX = (x / window.innerWidth - 0.5) * 2;
+                targetY = (y / window.innerHeight - 0.5) * 2;
+            }
+
+            window.addEventListener('mousemove', (e) => {
+                onPointerMove(e.clientX, e.clientY);
+
+                if (isDragging) {
+                    const deltaMove = {
+                        x: e.clientX - previousMousePosition.x,
+                        y: e.clientY - previousMousePosition.y
+                    };
+
+                    points.rotation.y += deltaMove.x * 0.005;
+                    points.rotation.x += deltaMove.y * 0.005;
+                }
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // Soporte para dispositivos táctiles
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: true });
 
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
+
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             });
@@ -243,25 +264,22 @@
 
                 const elapsedTime = clock.getElapsedTime();
 
-                // Rotate galaxy around its axis
-                lenticularGalaxy.rotation.y = elapsedTime * 0.015;
+                // Rotación suave continua del núcleo de la galaxia
+                points.rotation.y = elapsedTime * 0.06;
 
-                // Smoothly interpolate gyroscope offsets
-                if (gyroEnabled) {
-                    currentGyroX += (targetGyroX - currentGyroX) * 0.05;
-                    currentGyroY += (targetGyroY - currentGyroY) * 0.05;
+                // Efecto Parallax suave de la cámara guiado por la posición del cursor/toque
+                mouseX += (targetX - mouseX) * 0.03;
+                mouseY += (targetY - mouseY) * 0.03;
 
-                    // Apply gyro tilt to scene view orientation
-                    scene.rotation.x = currentGyroX;
-                    scene.rotation.z = -currentGyroY;
-                }
+                camera.position.x = mouseX * 18;
+                camera.position.y = 25 + (-mouseY * 15);
+                camera.lookAt(0, 0, 0);
 
-                // Update orbit controls (touch/mouse swipe + zoom)
-                controls.update();
-
+                // Renderizar escena
                 renderer.render(scene, camera);
             }
 
+            // Iniciar la animación
             animate();
         };
     </script>
