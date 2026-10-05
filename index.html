@@ -3,15 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Galaxia Espiral 3D</title>
-    <style>
-        * {
-            margin: 0;<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Galaxia Espiral 3D</title>
+    <title>3D Wormhole Cosmic Travel</title>
     <style>
         * {
             margin: 0;
@@ -19,675 +11,369 @@
             box-sizing: border-box;
             overflow: hidden;
         }
-
-        html, body {
+        body, html {
             width: 100%;
             height: 100%;
             background-color: #000000;
-            cursor: grab;
-            user-select: none;
-            -webkit-user-select: none;
+            touch-action: none;
         }
-
-        body:active {
-            cursor: grabbing;
-        }
-
-        #galaxy-canvas {
+        canvas {
             display: block;
-            width: 100vw;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1;
+            width: 100%;
+            height: 100%;
         }
     </style>
-    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <canvas id="galaxy-canvas"></canvas>
 
     <script>
-        window.onload = function() {
-            // Configuración de escena, cámara y renderizador
-            const canvas = document.getElementById('galaxy-canvas');
+        window.onload = function () {
             const scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.0008);
+            scene.fog = new THREE.FogExp2(0x020008, 0.0035);
 
             const camera = new THREE.PerspectiveCamera(
-                60,
+                75,
                 window.innerWidth / window.innerHeight,
                 0.1,
-                2000
+                1000
             );
-            
-            // Posición inicial de la cámara para vista en perspectiva
-            camera.position.set(0, 25, 45);
 
-            const renderer = new THREE.WebGLRenderer({
-                canvas: canvas,
-                antialias: true,
-                alpha: false,
-                powerPreference: "high-performance"
-            });
+            const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.body.appendChild(renderer.domElement);
 
-            // Crear textura brillante personalizada mediante HTML5 Canvas en memoria
-            function createStarTexture() {
-                const texCanvas = document.createElement('canvas');
-                texCanvas.width = 128;
-                texCanvas.height = 128;
-                const ctx = texCanvas.getContext('2d');
+            function createGlowTexture(colorInner, colorOuter) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
 
                 const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                gradient.addColorStop(0.15, 'rgba(255, 230, 255, 0.9)');
-                gradient.addColorStop(0.4, 'rgba(128, 180, 255, 0.4)');
-                gradient.addColorStop(0.8, 'rgba(64, 0, 128, 0.1)');
+                gradient.addColorStop(0, colorInner);
+                gradient.addColorStop(0.3, colorOuter);
+                gradient.addColorStop(0.7, 'rgba(20, 10, 40, 0.15)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, 128, 128);
 
-                const texture = new THREE.CanvasTexture(texCanvas);
-                texture.needsUpdate = true;
-                return texture;
+                return new THREE.CanvasTexture(canvas);
             }
 
-            const starTexture = createStarTexture();
+            const starTexture = createGlowTexture('rgba(255, 255, 255, 1)', 'rgba(180, 220, 255, 0.8)');
+            const nebulaTexture1 = createGlowTexture('rgba(255, 60, 180, 0.9)', 'rgba(120, 0, 255, 0.4)');
+            const nebulaTexture2 = createGlowTexture('rgba(0, 220, 255, 0.9)', 'rgba(0, 50, 200, 0.4)');
+            const goldTexture = createGlowTexture('rgba(255, 200, 80, 1)', 'rgba(255, 100, 0, 0.5)');
 
-            // Parámetros de la galaxia
-            const parameters = {
-                count: 180000,           // Densidad masiva de estrellas
-                size: 0.28,
-                radius: 55,
-                branches: 4,             // Brazos espirales
-                spin: 1.2,
-                randomness: 0.6,
-                power: 3.5,
-                insideColor: '#ffaa55',  // Núcleo resplandeciente warm/gold
-                outsideColor: '#1966ff'  // Bordes azul/neón
-            };
-
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(parameters.count * 3);
-            const colors = new Float32Array(parameters.count * 3);
-            const scales = new Float32Array(parameters.count);
-
-            const colorInside = new THREE.Color(parameters.insideColor);
-            const colorOutside = new THREE.Color(parameters.outsideColor);
-            const colorCore = new THREE.Color('#ffffff');
-
-            for (let i = 0; i < parameters.count; i++) {
-                // Posición radial
-                const r = Math.pow(Math.random(), parameters.power) * parameters.radius;
-                
-                // Ángulo de brazos espirales
-                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
-                const spinAngle = r * parameters.spin;
-
-                // Dispersión aleatoria para dar aspecto 3D orgánico
-                const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r;
-                const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r * 0.6;
-                const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r;
-
-                const i3 = i * 3;
-
-                positions[i3]     = Math.cos(branchAngle + spinAngle) * r + randomX;
-                positions[i3 + 1] = randomY;
-                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * r + randomZ;
-
-                // Color interpolado desde el núcleo hacia las puntas
-                const mixedColor = colorInside.clone();
-                const ratio = r / parameters.radius;
-                mixedColor.lerp(colorOutside, ratio);
-
-                // Brillo extra en el núcleo central
-                if (r < 4) {
-                    mixedColor.lerp(colorCore, 1 - (r / 4));
-                }
-
-                colors[i3]     = mixedColor.r;
-                colors[i3 + 1] = mixedColor.g;
-                colors[i3 + 2] = mixedColor.b;
-
-                // Variación de tamaño de partículas
-                scales[i] = Math.random() * 0.8 + 0.2;
-            }
-
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            geometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
-
-            const material = new THREE.PointsMaterial({
-                size: parameters.size,
-                sizeAttenuation: true,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending,
-                vertexColors: true,
-                map: starTexture,
-                transparent: true,
-                opacity: 0.95
-            });
-
-            const points = new THREE.Points(geometry, material);
-            scene.add(points);
-
-            // Fondo lejano de estrellas dispersas
-            const bgCount = 20000;
-            const bgGeometry = new THREE.BufferGeometry();
-            const bgPositions = new Float32Array(bgCount * 3);
-            const bgColors = new Float32Array(bgCount * 3);
-
-            for (let i = 0; i < bgCount; i++) {
-                const i3 = i * 3;
-                const radius = 100 + Math.random() * 400;
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos((Math.random() * 2) - 1);
-
-                bgPositions[i3]     = radius * Math.sin(phi) * Math.cos(theta);
-                bgPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                bgPositions[i3 + 2] = radius * Math.cos(phi);
-
-                const c = 0.5 + Math.random() * 0.5;
-                bgColors[i3]     = c * 0.8;
-                bgColors[i3 + 1] = c * 0.9;
-                bgColors[i3 + 2] = c;
-            }
-
-            bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
-            bgGeometry.setAttribute('color', new THREE.BufferAttribute(bgColors, 3));
-
-            const bgMaterial = new THREE.PointsMaterial({
-                size: 0.4,
-                sizeAttenuation: true,
-                transparent: true,
-                opacity: 0.6,
-                vertexColors: true,
-                map: starTexture,
-                blending: THREE.AdditiveBlending
-            });
-
-            const bgPoints = new THREE.Points(bgGeometry, bgMaterial);
-            scene.add(bgPoints);
-
-            let mouseX = 0;
-            let mouseY = 0;
-            let targetX = 0;
-            let targetY = 0;
-            let isDragging = false;
-            let previousMousePosition = { x: 0, y: 0 };
-
-            // Variables para zoom y gestos táctiles en celulares
-            let cameraDistance = 51.47; // Distancia inicial Math.hypot(25, 45)
-            const minDistance = 10;
-            const maxDistance = 150;
-            let initialPinchDistance = null;
-            let initialCameraDistance = cameraDistance;
-
-            // Controladores de interacciones (Ratón y Táctil)
-            function onPointerMove(x, y) {
-                targetX = (x / window.innerWidth - 0.5) * 2;
-                targetY = (y / window.innerHeight - 0.5) * 2;
-            }
-
-            window.addEventListener('mousemove', (e) => {
-                onPointerMove(e.clientX, e.clientY);
-
-                if (isDragging) {
-                    const deltaMove = {
-                        x: e.clientX - previousMousePosition.x,
-                        y: e.clientY - previousMousePosition.y
-                    };
-
-                    points.rotation.y += deltaMove.x * 0.005;
-                    points.rotation.x += deltaMove.y * 0.005;
-                }
-
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-
-            window.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-
-            window.addEventListener('mouseup', () => { isDragging = false; });
-
-            // Soporte para Zoom con la Rueda del Ratón (Desktop)
-            window.addEventListener('wheel', (e) => {
-                cameraDistance += e.deltaY * 0.05;
-                cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
-            }, { passive: true });
-
-            // Soporte para gestos multitáctiles en celulares (Pinch-to-zoom y rotación con un dedo)
-            window.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    isDragging = true;
-                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
-                } else if (e.touches.length === 2) {
-                    isDragging = false;
-                    // Calcular la distancia inicial entre los dos dedos
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    initialPinchDistance = Math.hypot(dx, dy);
-                    initialCameraDistance = cameraDistance;
-                }
-            }, { passive: true });
-
-            window.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 1 && isDragging) {
-                    onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
-
-                    const deltaMove = {
-                        x: e.touches[0].clientX - previousMousePosition.x,
-                        y: e.touches[0].clientY - previousMousePosition.y
-                    };
-
-                    points.rotation.y += deltaMove.x * 0.005;
-                    points.rotation.x += deltaMove.y * 0.005;
-
-                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                } else if (e.touches.length === 2 && initialPinchDistance) {
-                    // Pinch-to-zoom con dos dedos
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    const currentPinchDistance = Math.hypot(dx, dy);
-
-                    const factor = initialPinchDistance / currentPinchDistance;
-                    cameraDistance = Math.max(minDistance, Math.min(maxDistance, initialCameraDistance * factor));
-                }
-            }, { passive: true });
-
-            window.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) {
-                    initialPinchDistance = null;
-                }
-                if (e.touches.length === 0) {
-                    isDragging = false;
-                }
-            }, { passive: true });
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            });
-
-            const clock = new THREE.Clock();
-
-            function animate() {
-                requestAnimationFrame(animate);
-
-                const elapsedTime = clock.getElapsedTime();
-
-                // Rotación suave continua del núcleo de la galaxia
-                points.rotation.y += 0.001;
-
-                // Efecto Parallax suave de la cámara guiado por la posición del cursor/toque
-                mouseX += (targetX - mouseX) * 0.03;
-                mouseY += (targetY - mouseY) * 0.03;
-
-                // Actualizar la posición de la cámara respetando la distancia del Zoom
-                const basePitch = 0.55; // Ángulo de inclinación base
-                const currentPitch = basePitch + (-mouseY * 0.3);
-                const currentYaw = mouseX * 0.3;
-
-                camera.position.x = cameraDistance * Math.sin(currentYaw) * Math.cos(currentPitch);
-                camera.position.y = cameraDistance * Math.sin(currentPitch);
-                camera.position.z = cameraDistance * Math.cos(currentYaw) * Math.cos(currentPitch);
-                camera.lookAt(0, 0, 0);
-
-                // Renderizar escena
-                renderer.render(scene, camera);
-            }
-
-            // Iniciar la animación
-            animate();
-        };
-    </script>
-</body>
-</html>
-            padding: 0;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
-            background-color: #000000;
-            cursor: grab;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        body:active {
-            cursor: grabbing;
-        }
-
-        #galaxy-canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-    </style>
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-</head>
-<body>
-    <canvas id="galaxy-canvas"></canvas>
-
-    <script>
-        window.onload = function() {
-            // Configuración de escena, cámara y renderizador
-            const canvas = document.getElementById('galaxy-canvas');
-            const scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.0008);
-
-            const camera = new THREE.PerspectiveCamera(
-                60,
-                window.innerWidth / window.innerHeight,
-                0.1,
-                2000
-            );
+            const tunnelSegments = 300;
+            const tunnelLength = 800;
             
-            // Posición inicial de la cámara para vista en perspectiva
-            camera.position.set(0, 25, 45);
-
-            const renderer = new THREE.WebGLRenderer({
-                canvas: canvas,
-                antialias: true,
-                alpha: false,
-                powerPreference: "high-performance"
-            });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-            // Crear textura brillante personalizada mediante HTML5 Canvas en memoria
-            function createStarTexture() {
-                const texCanvas = document.createElement('canvas');
-                texCanvas.width = 128;
-                texCanvas.height = 128;
-                const ctx = texCanvas.getContext('2d');
-
-                const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                gradient.addColorStop(0.15, 'rgba(255, 230, 255, 0.9)');
-                gradient.addColorStop(0.4, 'rgba(128, 180, 255, 0.4)');
-                gradient.addColorStop(0.8, 'rgba(64, 0, 128, 0.1)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 128, 128);
-
-                const texture = new THREE.CanvasTexture(texCanvas);
-                texture.needsUpdate = true;
-                return texture;
+            // Create a curved path using CatmullRomCurve3
+            const curvePoints = [];
+            for (let i = 0; i < 20; i++) {
+                const z = -i * (tunnelLength / 20);
+                const x = Math.sin(i * 0.5) * 45;
+                const y = Math.cos(i * 0.3) * 35;
+                curvePoints.push(new THREE.Vector3(x, y, z));
             }
+            const tunnelPath = new THREE.CatmullRomCurve3(curvePoints);
+            tunnelPath.closed = false;
 
-            const starTexture = createStarTexture();
-
-            // Parámetros de la galaxia
-            const parameters = {
-                count: 180000,           // Densidad masiva de estrellas
-                size: 0.28,
-                radius: 55,
-                branches: 4,             // Brazos espirales
-                spin: 1.2,
-                randomness: 0.6,
-                power: 3.5,
-                insideColor: '#ffaa55',  // Núcleo resplandeciente warm/gold
-                outsideColor: '#1966ff'  // Bordes azul/neón
-            };
-
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(parameters.count * 3);
-            const colors = new Float32Array(parameters.count * 3);
-            const scales = new Float32Array(parameters.count);
-
-            const colorInside = new THREE.Color(parameters.insideColor);
-            const colorOutside = new THREE.Color(parameters.outsideColor);
-            const colorCore = new THREE.Color('#ffffff');
-
-            for (let i = 0; i < parameters.count; i++) {
-                // Posición radial
-                const r = Math.pow(Math.random(), parameters.power) * parameters.radius;
-                
-                // Ángulo de brazos espirales
-                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
-                const spinAngle = r * parameters.spin;
-
-                // Dispersión aleatoria para dar aspecto 3D orgánico
-                const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r;
-                const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r * 0.6;
-                const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * r;
-
-                const i3 = i * 3;
-
-                positions[i3]     = Math.cos(branchAngle + spinAngle) * r + randomX;
-                positions[i3 + 1] = randomY;
-                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * r + randomZ;
-
-                // Color interpolado desde el núcleo hacia las puntas
-                const mixedColor = colorInside.clone();
-                const ratio = r / parameters.radius;
-                mixedColor.lerp(colorOutside, ratio);
-
-                // Brillo extra en el núcleo central
-                if (r < 4) {
-                    mixedColor.lerp(colorCore, 1 - (r / 4));
-                }
-
-                colors[i3]     = mixedColor.r;
-                colors[i3 + 1] = mixedColor.g;
-                colors[i3 + 2] = mixedColor.b;
-
-                // Variación de tamaño de partículas
-                scales[i] = Math.random() * 0.8 + 0.2;
-            }
-
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            geometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
-
-            const material = new THREE.PointsMaterial({
-                size: parameters.size,
-                sizeAttenuation: true,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending,
-                vertexColors: true,
-                map: starTexture,
+            const tunnelGeometry = new THREE.TubeGeometry(tunnelPath, tunnelSegments, 22, 24, false);
+            
+            // Create Tunnel Wireframe/Energy Mesh
+            const tunnelMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4411aa,
+                wireframe: true,
                 transparent: true,
-                opacity: 0.95
-            });
-
-            const points = new THREE.Points(geometry, material);
-            scene.add(points);
-
-            // Fondo lejano de estrellas dispersas
-            const bgCount = 20000;
-            const bgGeometry = new THREE.BufferGeometry();
-            const bgPositions = new Float32Array(bgCount * 3);
-            const bgColors = new Float32Array(bgCount * 3);
-
-            for (let i = 0; i < bgCount; i++) {
-                const i3 = i * 3;
-                const radius = 100 + Math.random() * 400;
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos((Math.random() * 2) - 1);
-
-                bgPositions[i3]     = radius * Math.sin(phi) * Math.cos(theta);
-                bgPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                bgPositions[i3 + 2] = radius * Math.cos(phi);
-
-                const c = 0.5 + Math.random() * 0.5;
-                bgColors[i3]     = c * 0.8;
-                bgColors[i3 + 1] = c * 0.9;
-                bgColors[i3 + 2] = c;
-            }
-
-            bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
-            bgGeometry.setAttribute('color', new THREE.BufferAttribute(bgColors, 3));
-
-            const bgMaterial = new THREE.PointsMaterial({
-                size: 0.4,
-                sizeAttenuation: true,
-                transparent: true,
-                opacity: 0.6,
-                vertexColors: true,
-                map: starTexture,
+                opacity: 0.15,
                 blending: THREE.AdditiveBlending
             });
+            const tunnelMesh = new THREE.Mesh(tunnelGeometry, tunnelMaterial);
+            scene.add(tunnelMesh);
 
-            const bgPoints = new THREE.Points(bgGeometry, bgMaterial);
-            scene.add(bgPoints);
+            const tunnelParticleCount = 110000;
+            const particleGeo = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(tunnelParticleCount * 3);
+            const particleColors = new Float32Array(tunnelParticleCount * 3);
+            const particleSizes = new Float32Array(tunnelParticleCount);
 
-            let mouseX = 0;
-            let mouseY = 0;
-            let targetX = 0;
-            let targetY = 0;
-            let isDragging = false;
-            let previousMousePosition = { x: 0, y: 0 };
+            const palette = [
+                new THREE.Color('#00ffff'), // Cyan
+                new THREE.Color('#ff00aa'), // Magenta
+                new THREE.Color('#7700ff'), // Purple
+                new THREE.Color('#0066ff'), // Blue
+                new THREE.Color('#ffbb33'), // Gold
+                new THREE.Color('#ffffff')  // Pure White
+            ];
 
-            // Variables para zoom y gestos táctiles en celulares
-            let cameraDistance = 51.47; // Distancia inicial Math.hypot(25, 45)
-            const minDistance = 10;
-            const maxDistance = 150;
-            let initialPinchDistance = null;
-            let initialCameraDistance = cameraDistance;
+            for (let i = 0; i < tunnelParticleCount; i++) {
+                const i3 = i * 3;
+                
+                // Distribute particles along the tunnel tube path
+                const u = Math.random();
+                const pointOnCurve = tunnelPath.getPointAt(u);
+                
+                // Angle around the tunnel cylinder
+                const angle = Math.random() * Math.PI * 2;
+                // Varying radius for thick dense cosmic dust walls
+                const radius = 8 + Math.pow(Math.random(), 1.5) * 26;
 
-            // Controladores de interacciones (Ratón y Táctil)
-            function onPointerMove(x, y) {
-                targetX = (x / window.innerWidth - 0.5) * 2;
-                targetY = (y / window.innerHeight - 0.5) * 2;
+                // Tangent vector for perpendicular positioning
+                const tangent = tunnelPath.getTangentAt(u);
+                const normal = new THREE.Vector3(0, 1, 0).cross(tangent).normalize();
+                const binormal = tangent.clone().cross(normal).normalize();
+
+                const x = pointOnCurve.x + (Math.cos(angle) * normal.x + Math.sin(angle) * binormal.x) * radius;
+                const y = pointOnCurve.y + (Math.cos(angle) * normal.y + Math.sin(angle) * binormal.y) * radius;
+                const z = pointOnCurve.z + (Math.cos(angle) * normal.z + Math.sin(angle) * binormal.z) * radius;
+
+                particlePos[i3] = x;
+                particlePos[i3 + 1] = y;
+                particlePos[i3 + 2] = z;
+
+                // Color distribution
+                const cIdx = Math.floor(Math.random() * palette.length);
+                const col = palette[cIdx].clone();
+                col.r += (Math.random() - 0.5) * 0.1;
+                col.g += (Math.random() - 0.5) * 0.1;
+                col.b += (Math.random() - 0.5) * 0.1;
+
+                particleColors[i3] = col.r;
+                particleColors[i3 + 1] = col.g;
+                particleColors[i3 + 2] = col.b;
+
+                particleSizes[i] = Math.random() * 0.6 + 0.15;
             }
 
-            window.addEventListener('mousemove', (e) => {
-                onPointerMove(e.clientX, e.clientY);
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
 
-                if (isDragging) {
-                    const deltaMove = {
-                        x: e.clientX - previousMousePosition.x,
-                        y: e.clientY - previousMousePosition.y
-                    };
-
-                    points.rotation.y += deltaMove.x * 0.005;
-                    points.rotation.x += deltaMove.y * 0.005;
-                }
-
-                previousMousePosition = { x: e.clientX, y: e.clientY };
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.35,
+                vertexColors: true,
+                map: starTexture,
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
             });
 
-            window.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
+            const tunnelParticles = new THREE.Points(particleGeo, particleMat);
+            scene.add(tunnelParticles);
+
+            const nebulaCount = 1800;
+            const nebulaGeo = new THREE.BufferGeometry();
+            const nebulaPos = new Float32Array(nebulaCount * 3);
+            const nebulaColors = new Float32Array(nebulaCount * 3);
+
+            for (let i = 0; i < nebulaCount; i++) {
+                const i3 = i * 3;
+                const u = Math.random();
+                const pointOnCurve = tunnelPath.getPointAt(u);
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 10 + Math.random() * 20;
+
+                const tangent = tunnelPath.getTangentAt(u);
+                const normal = new THREE.Vector3(0, 1, 0).cross(tangent).normalize();
+                const binormal = tangent.clone().cross(normal).normalize();
+
+                nebulaPos[i3] = pointOnCurve.x + (Math.cos(angle) * normal.x + Math.sin(angle) * binormal.x) * radius;
+                nebulaPos[i3 + 1] = pointOnCurve.y + (Math.cos(angle) * normal.y + Math.sin(angle) * binormal.y) * radius;
+                nebulaPos[i3 + 2] = pointOnCurve.z + (Math.cos(angle) * normal.z + Math.sin(angle) * binormal.z) * radius;
+
+                const col = (Math.random() < 0.5) ? new THREE.Color('#ff00bb') : new THREE.Color('#00ccff');
+                nebulaColors[i3] = col.r;
+                nebulaColors[i3 + 1] = col.g;
+                nebulaColors[i3 + 2] = col.b;
+            }
+
+            nebulaGeo.setAttribute('position', new THREE.BufferAttribute(nebulaPos, 3));
+            nebulaGeo.setAttribute('color', new THREE.BufferAttribute(nebulaColors, 3));
+
+            const nebulaMat = new THREE.PointsMaterial({
+                size: 6.5,
+                vertexColors: true,
+                map: nebulaTexture1,
+                transparent: true,
+                opacity: 0.25,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
             });
 
-            window.addEventListener('mouseup', () => { isDragging = false; });
+            const nebulaClouds = new THREE.Points(nebulaGeo, nebulaMat);
+            scene.add(nebulaClouds);
 
-            // Soporte para Zoom con la Rueda del Ratón (Desktop)
-            window.addEventListener('wheel', (e) => {
-                cameraDistance += e.deltaY * 0.05;
-                cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
-            }, { passive: true });
+            const galaxyGroup = new THREE.Group();
+            
+            function createMiniGalaxy(color1, color2) {
+                const count = 4000;
+                const geo = new THREE.BufferGeometry();
+                const pos = new Float32Array(count * 3);
+                const col = new Float32Array(count * 3);
 
-            // Soporte para gestos multitáctiles en celulares (Pinch-to-zoom y rotación con un dedo)
-            window.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    isDragging = true;
-                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
-                } else if (e.touches.length === 2) {
-                    isDragging = false;
-                    // Calcular la distancia inicial entre los dos dedos
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    initialPinchDistance = Math.hypot(dx, dy);
-                    initialCameraDistance = cameraDistance;
+                const c1 = new THREE.Color(color1);
+                const c2 = new THREE.Color(color2);
+
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    const r = Math.pow(Math.random(), 1.5) * 15;
+                    const theta = Math.random() * Math.PI * 2 * 3;
+                    const armOffset = (i % 2) * Math.PI;
+
+                    const x = Math.cos(theta + armOffset) * r + (Math.random() - 0.5) * 1.5;
+                    const y = (Math.random() - 0.5) * 1.2;
+                    const z = Math.sin(theta + armOffset) * r + (Math.random() - 0.5) * 1.5;
+
+                    pos[i3] = x;
+                    pos[i3 + 1] = y;
+                    pos[i3 + 2] = z;
+
+                    const mixed = c1.clone().lerp(c2, r / 15);
+                    col[i3] = mixed.r;
+                    col[i3 + 1] = mixed.g;
+                    col[i3 + 2] = mixed.b;
                 }
-            }, { passive: true });
 
-            window.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 1 && isDragging) {
-                    onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+                geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 
-                    const deltaMove = {
-                        x: e.touches[0].clientX - previousMousePosition.x,
-                        y: e.touches[0].clientY - previousMousePosition.y
-                    };
+                const mat = new THREE.PointsMaterial({
+                    size: 0.25,
+                    vertexColors: true,
+                    map: starTexture,
+                    transparent: true,
+                    opacity: 0.7,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
 
-                    points.rotation.y += deltaMove.x * 0.005;
-                    points.rotation.x += deltaMove.y * 0.005;
+                return new THREE.Points(geo, mat);
+            }
 
-                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                } else if (e.touches.length === 2 && initialPinchDistance) {
-                    // Pinch-to-zoom con dos dedos
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    const currentPinchDistance = Math.hypot(dx, dy);
+            // Spawn several galaxies outer perimeter along the tunnel
+            for (let i = 0; i < 12; i++) {
+                const gal = createMiniGalaxy(i % 2 === 0 ? '#ff44aa' : '#00ddff', i % 2 === 0 ? '#ffbb22' : '#aa00ff');
+                const u = (i / 12);
+                const pt = tunnelPath.getPointAt(u);
+                
+                gal.position.set(
+                    pt.x + (Math.random() - 0.5) * 120,
+                    pt.y + (Math.random() - 0.5) * 120,
+                    pt.z + (Math.random() - 0.5) * 60
+                );
+                gal.rotation.x = Math.random() * Math.PI;
+                gal.rotation.y = Math.random() * Math.PI;
+                galaxyGroup.add(gal);
+            }
+            scene.add(galaxyGroup);
 
-                    const factor = initialPinchDistance / currentPinchDistance;
-                    cameraDistance = Math.max(minDistance, Math.min(maxDistance, initialCameraDistance * factor));
+            let targetGyroX = 0;
+            let targetGyroY = 0;
+            let currentGyroX = 0;
+            let currentGyroY = 0;
+
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchOffsetX = 0;
+            let touchOffsetY = 0;
+
+            function handleOrientation(event) {
+                if (event.beta === null || event.gamma === null) return;
+                const beta = Math.max(-60, Math.min(60, event.beta));
+                const gamma = Math.max(-60, Math.min(60, event.gamma));
+
+                targetGyroX = (beta / 60) * 0.8;
+                targetGyroY = (gamma / 60) * 0.8;
+            }
+
+            function requestGyroPermission() {
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    DeviceOrientationEvent.requestPermission()
+                        .then(state => {
+                            if (state === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation, true);
+                            }
+                        })
+                        .catch(console.error);
+                } else if ('addEventListener' in window) {
+                    window.addEventListener('deviceorientation', handleOrientation, true);
                 }
-            }, { passive: true });
+            }
 
-            window.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) {
-                    initialPinchDistance = null;
+            // Touch & Mouse Drag listener
+            window.addEventListener('pointerdown', (e) => {
+                requestGyroPermission();
+                touchStartX = e.clientX;
+                touchStartY = e.clientY;
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (e.buttons > 0) {
+                    touchOffsetX = ((e.clientX - touchStartX) / window.innerWidth) * 2;
+                    touchOffsetY = ((e.clientY - touchStartY) / window.innerHeight) * 2;
                 }
-                if (e.touches.length === 0) {
-                    isDragging = false;
-                }
-            }, { passive: true });
+            });
+
+            window.addEventListener('pointerup', () => {
+                touchOffsetX = 0;
+                touchOffsetY = 0;
+            });
 
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
-
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             });
 
             const clock = new THREE.Clock();
+            let travelProgress = 0;
+            const travelSpeed = 0.032; // Fast hyper-drive speed
 
             function animate() {
                 requestAnimationFrame(animate);
 
+                const delta = clock.getDelta();
                 const elapsedTime = clock.getElapsedTime();
 
-                // Rotación suave continua del núcleo de la galaxia
-                points.rotation.y += 0.001;
+                // Increment travel along wormhole tube
+                travelProgress += travelSpeed * delta;
+                if (travelProgress >= 0.8) {
+                    travelProgress -= 0.7; // Loop path seamlessly
+                }
 
-                // Efecto Parallax suave de la cámara guiado por la posición del cursor/toque
-                mouseX += (targetX - mouseX) * 0.03;
-                mouseY += (targetY - mouseY) * 0.03;
+                // Camera position along curved path
+                const camPos = tunnelPath.getPointAt(travelProgress);
+                const lookAtPos = tunnelPath.getPointAt(travelProgress + 0.03);
 
-                // Actualizar la posición de la cámara respetando la distancia del Zoom
-                const basePitch = 0.55; // Ángulo de inclinación base
-                const currentPitch = basePitch + (-mouseY * 0.3);
-                const currentYaw = mouseX * 0.3;
+                camera.position.copy(camPos);
 
-                camera.position.x = cameraDistance * Math.sin(currentYaw) * Math.cos(currentPitch);
-                camera.position.y = cameraDistance * Math.sin(currentPitch);
-                camera.position.z = cameraDistance * Math.cos(currentYaw) * Math.cos(currentPitch);
-                camera.lookAt(0, 0, 0);
+                // Smooth Interpolation of Gyro and Touch offsets
+                currentGyroX += (targetGyroX + touchOffsetY - currentGyroX) * 0.08;
+                currentGyroY += (targetGyroY + touchOffsetX - currentGyroY) * 0.08;
 
-                // Renderizar escena
+                // Offset camera target based on tilt
+                const upVector = new THREE.Vector3(0, 1, 0);
+                camera.lookAt(lookAtPos);
+                camera.rotation.z += elapsedTime * 0.2; // Slow tunnel roll rotation
+                camera.rotation.x += currentGyroX * 0.4;
+                camera.rotation.y += currentGyroY * 0.4;
+
+                // Animate galaxies rotation
+                galaxyGroup.children.forEach((gal, idx) => {
+                    gal.rotation.y += 0.005 * (idx % 2 === 0 ? 1 : -1);
+                });
+
+                // Subtle pulsing tunnel lights
+                tunnelMaterial.opacity = 0.12 + Math.sin(elapsedTime * 3) * 0.05;
+
                 renderer.render(scene, camera);
             }
 
-            // Iniciar la animación
+            // Start infinite travel animation
             animate();
         };
     </script>
